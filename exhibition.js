@@ -117,12 +117,14 @@ TRACKS.forEach((tr,ti)=>{
 
 /* ---------- 지오메트리 (직사각형 홀 · 아이소메트릭) ---------- */
 const TW=64,TH=32;
-const HALL_W=50, HALL_D=36;
+const HALL_W=82, HALL_D=43;
 const WALL_H=70;
 /* 트랙 존: 뒤 3 · 앞 2(중앙 광장 양옆), 존마다 2×2 부스 클러스터 */
-const ZONES=[{cx:10,cy:7},{cx:25,cy:7},{cx:40,cy:7},{cx:11,cy:21},{cx:39,cy:21}];
+const ZONES=[{cx:12,cy:8},{cx:30,cy:8},{cx:48,cy:8},{cx:13,cy:25},{cx:47,cy:25}];
 const BOOTH_DX=4, BOOTH_DY=6;
-const PLAZA={x:25,y:22};
+const PLAZA={x:30,y:26};
+/* 플레이그라운드: 홀 우측 (17×23타일) */
+const PG={x0:62,x1:78,y0:9,y1:31,accent:'#8b5cf6'};
 
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const dist=(ax,ay,bx,by)=>Math.hypot(ax-bx,ay-by);
@@ -149,18 +151,29 @@ TRACKS.forEach((tr,ti)=>{
 
 /* ---------- 장식 (중앙 전광판 · 나무 · 벤치) ---------- */
 const DECOR=[
-  {type:'billboard',gx:PLAZA.x,gy:PLAZA.y-3.5},
+  {type:'billboard',gx:PLAZA.x,gy:PLAZA.y-3.5,text:'HELLO AI',sub:'S.LSI  HACKATHON  EXPO',color:'#3d7bff',w:250,fs:40,face:'ur'},
+  // 플레이그라운드 대형 팻말 — zd: 뒤벽(d≈86.4)보다 뒤에 그려지지 않도록 벽 위로
+  {type:'billboard',gx:70,gy:PG.y0+0.4,text:'PLAYGROUND',sub:'미니게임 · 소소한 즐길거리',color:'#8b5cf6',w:280,fs:36,face:'ur',zd:87},
   // 광장 벤치 (전광판 앞)
-  {type:'bench',gx:21.5,gy:21.5},{type:'bench',gx:28.5,gy:21.5},
-  {type:'bench',gx:21.5,gy:24.5},{type:'bench',gx:28.5,gy:24.5},
+  {type:'bench',gx:25.5,gy:25},{type:'bench',gx:34.5,gy:25},
+  {type:'bench',gx:25.5,gy:29},{type:'bench',gx:34.5,gy:29},
   // 입구 벤치
-  {type:'bench',gx:8,gy:31},{type:'bench',gx:42,gy:31},
+  {type:'bench',gx:10,gy:38},{type:'bench',gx:52,gy:38},
   // 나무
-  {type:'tree',gx:19,gy:17.5},{type:'tree',gx:31,gy:17.5},
-  {type:'tree',gx:19,gy:27},{type:'tree',gx:31,gy:27},
-  {type:'tree',gx:3,gy:12},{type:'tree',gx:3,gy:24},
-  {type:'tree',gx:47,gy:12},{type:'tree',gx:47,gy:24},
-  {type:'tree',gx:18,gy:2.5},{type:'tree',gx:32,gy:2.5},
+  {type:'tree',gx:22,gy:20},{type:'tree',gx:38,gy:20},
+  {type:'tree',gx:22,gy:32},{type:'tree',gx:38,gy:32},
+  {type:'tree',gx:3,gy:14},{type:'tree',gx:3,gy:28},
+  {type:'tree',gx:60,gy:14},{type:'tree',gx:60,gy:28},
+  {type:'tree',gx:22,gy:3},{type:'tree',gx:38,gy:3},
+  // 플레이그라운드: 아케이드 미니게임 캐비닛 + 벤치 + 나무
+  {type:'arcade',gx:65,gy:14,label:'두더지 잡기',color:'#e0533f'},
+  {type:'arcade',gx:70,gy:14,label:'반응속도',color:'#21a17a'},
+  {type:'arcade',gx:75,gy:14,label:'타자 배틀',color:'#e0872f'},
+  {type:'arcade',gx:65,gy:24,label:'AI 퀴즈',color:'#1a8fe3'},
+  {type:'arcade',gx:70,gy:24,label:'가위바위보',color:'#c78bff'},
+  {type:'arcade',gx:75,gy:24,label:'랜덤 뽑기',color:'#e6b24d'},
+  {type:'bench',gx:63,gy:19},{type:'bench',gx:77,gy:19},
+  {type:'tree',gx:63,gy:30},{type:'tree',gx:77,gy:30},
 ];
 
 /* ---------- 캔버스 ---------- */
@@ -178,7 +191,8 @@ for(let gx=1;gx<=HALL_W-2;gx++)for(let gy=1;gy<=HALL_D-2;gy++){
   const chk=((gx+gy)&1), base=chk?P.floorA:P.floorB;
   let fill;
   if(gy>=HALL_D-4){ fill=mix(base,'#3d7bff',0.13); }
-  else if(dist(gx,gy,PLAZA.x,PLAZA.y)<5.4){ fill=mix(base,'#3d7bff',0.10); }
+  else if(dist(gx,gy,PLAZA.x,PLAZA.y)<7.5){ fill=mix(base,'#3d7bff',0.10); }
+  else if(gx>=PG.x0&&gx<=PG.x1&&gy>=PG.y0&&gy<=PG.y1){ fill=mix(base,PG.accent,0.14); }
   else{ const tk=carpetTrack(gx,gy); fill = tk>=0 ? mix(base,TRACKS[tk].accent,0.17) : base; }
   FLOOR.push({gx,gy,fill});
 }
@@ -199,11 +213,20 @@ TRACKS.forEach((tr,ti)=>{const z=ZONES[ti];
     WALLS.push({gx:z.cx+ZONE_WALL_HW+1,gy,edge:'ul',acc:tr.accent,d:z.cx+ZONE_WALL_HW+1+gy-0.6});
   }
 });
+/* 플레이그라운드 파티션 (뒤 + 좌우 위쪽, 앞 개방) */
+for(let gx=PG.x0;gx<=PG.x1;gx++) WALLS.push({gx,gy:PG.y0,edge:'ur',acc:PG.accent,d:gx+PG.y0-0.6});
+for(let gy=PG.y0;gy<PG.y0+ZONE_WALL_SIDE;gy++){
+  WALLS.push({gx:PG.x0,gy,edge:'ul',acc:PG.accent,d:PG.x0+gy-0.6});
+  WALLS.push({gx:PG.x1+1,gy,edge:'ul',acc:PG.accent,d:PG.x1+1+gy-0.6});
+}
 
 /* ---------- 엔티티 ---------- */
 const player={gx:HALL_W/2,gy:HALL_D-3,color:'#3d7bff',head:P.playerHead,phase:0,moving:false,face:1,isPlayer:true};
 const NPC_COLORS=['#12b3a6','#6c5ce7','#e0872f','#21a17a','#e0533f','#1a8fe3','#c78bff','#4d8bff'];
-const AY=[4,17,31], AX=[2.5,17.5,25,32.5,46];
+const NICKS=['새벽코딩','민초단','커밋요정','도넛왕','텐서보이','디버그맨','밤샘장인','반도체진심',
+  '웨이퍼러버','치킨쿠폰','알고리듬','폰노이만','초코라떼','피카부','스탠드업','자율주행러',
+  '커피수혈','조립왕','핫식스','린턴하는중'];
+const AY=[5,14,20,24,37], AX=[3,21,30,39,56,70];
 function randAisle(){return Math.random()<0.5
   ? {x:2+Math.random()*(HALL_W-4), y:AY[(Math.random()*AY.length)|0]}
   : {x:AX[(Math.random()*AX.length)|0], y:2+Math.random()*(HALL_D-4)};}
@@ -213,9 +236,9 @@ function npcTarget(n){
   n.state='walk';
 }
 const npcs=[];
-for(let i=0;i<16;i++){
+for(let i=0;i<20;i++){
   let sx,sy;do{sx=6+Math.random()*(HALL_W-12);sy=HALL_D-3-Math.random()*2.5;}while(!walkable(sx,sy));
-  const n={gx:sx,gy:sy,color:NPC_COLORS[i%NPC_COLORS.length],head:P.npcHead,
+  const n={gx:sx,gy:sy,nick:NICKS[i%NICKS.length],color:NPC_COLORS[i%NPC_COLORS.length],head:P.npcHead,
     speed:2.1+Math.random()*1.2,state:'walk',timer:0,phase:Math.random()*7,moving:true,face:1,isPlayer:false,tx:0,ty:0};
   npcTarget(n); npcs.push(n);
 }
@@ -228,6 +251,9 @@ function walkable(gx,gy){ // 벽만 막음(홀 경계 + 구역 파티션) — �
     if(Math.abs(gy-by)<0.4 && Math.abs(gx-z.cx)<=ZONE_WALL_HW+0.9) return false;
     if(Math.abs(Math.abs(gx-z.cx)-(ZONE_WALL_HW+0.5))<0.4 && gy>by-0.4 && gy<by+ZONE_WALL_SIDE) return false;
   }
+  const pby=PG.y0-0.5;
+  if(Math.abs(gy-pby)<0.4 && gx>=PG.x0-0.9 && gx<=PG.x1+0.9) return false;
+  if((Math.abs(gx-(PG.x0-0.5))<0.4||Math.abs(gx-(PG.x1+0.5))<0.4) && gy>pby-0.4 && gy<pby+ZONE_WALL_SIDE) return false;
   return true;
 }
 function moveEnt(e,dx,dy){if(walkable(e.gx+dx,e.gy))e.gx+=dx;if(walkable(e.gx,e.gy+dy))e.gy+=dy;}
@@ -267,7 +293,7 @@ function update(dt,t){
   if(started&&!modalOpen){
     let h=(down(K_RIGHT)?1:0)-(down(K_LEFT)?1:0)+padVec.x, v=(down(K_DOWN)?1:0)-(down(K_UP)?1:0)+padVec.y;
     h=clamp(h,-1,1);v=clamp(v,-1,1);
-    if(h||v){const m=Math.hypot(h,v)||1;h/=m;v/=m;const sp=5.2*dt;moveEnt(player,(v+h)*sp,(v-h)*sp);player.moving=true;player.phase+=dt*11;if(h)player.face=h>0?1:-1;}
+    if(h||v){const m=Math.hypot(h,v)||1;h/=m;v/=m;const sp=6*dt;moveEnt(player,(v+h)*sp,(v-h)*sp);player.moving=true;player.phase+=dt*11;if(h)player.face=h>0?1:-1;}
     else player.moving=false;
   } else player.moving=false;
 
@@ -290,7 +316,8 @@ function update(dt,t){
   else{let bi=-1;ZONES.forEach((z,i)=>{
       if(Math.abs(player.gx-z.cx)<=BOOTH_DX+3.5 && player.gy>=z.cy-2 && player.gy<=z.cy+BOOTH_DY+3) bi=i;});
     if(bi>=0){lbl=TRACKS[bi].code+' · '+TRACKS[bi].name;col=TRACKS[bi].accent;}
-    else if(Math.abs(player.gx-PLAZA.x)<=6.5&&Math.abs(player.gy-PLAZA.y)<=6){lbl='중앙 광장 · HELLO AI';col='#4d8bff';}}
+    else if(Math.abs(player.gx-PLAZA.x)<=8&&Math.abs(player.gy-PLAZA.y)<=7.5){lbl='중앙 광장 · HELLO AI';col='#4d8bff';}
+    else if(player.gx>=PG.x0-0.5&&player.gx<=PG.x1+0.5&&player.gy>=PG.y0-1&&player.gy<=PG.y1+1){lbl='플레이그라운드 · Playground';col='#a78bfa';}}
   zoneTxt.textContent=lbl; zonePill.style.color=col;
   const zd=zonePill.querySelector('.zd'); if(zd){zd.style.background=col;zd.style.boxShadow='0 0 10px '+col;}
   if(actBtn)actBtn.classList.toggle('on',!!(started&&!modalOpen&&activeBooth));
@@ -352,23 +379,26 @@ function drawBanner(tr){
 }
 
 function drawBillboard(d,t){
-  const s=w2s(d.gx,d.gy),x=s.x+camX,y=s.y+camY;if(cull(x,y-200))return;
-  const w=250,h=110,top=y-64-h;
-  ctx.fillStyle=P.bannerFrame;ctx.fillRect(x-w/2+18,y-64,8,64);ctx.fillRect(x+w/2-26,y-64,8,64);
-  ctx.shadowColor='rgba(61,123,255,0.5)';ctx.shadowBlur=26;
-  roundRect(x-w/2,top,w,h,10,'#0b1024');ctx.shadowBlur=0;   // LED 스크린은 테마 무관 다크
-  ctx.save();roundRectPath(x-w/2,top,w,h,10);ctx.clip();
-  const pulse=0.75+0.25*Math.sin(t*1.8);
-  const g=ctx.createLinearGradient(x-90,0,x+90,0);
-  g.addColorStop(0,'#4d8bff');g.addColorStop(.5,'#ffffff');g.addColorStop(1,'#4d8bff');
-  ctx.shadowColor='rgba(77,139,255,'+(0.85*pulse).toFixed(3)+')';ctx.shadowBlur=22*pulse;
-  ctx.fillStyle=g;ctx.font='900 40px Pretendard';ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText('HELLO AI',x,top+h/2-8);ctx.shadowBlur=0;
-  ctx.fillStyle='rgba(77,139,255,0.9)';ctx.font='700 11px Pretendard';
-  ctx.fillText('S.LSI  HACKATHON  EXPO',x,top+h-20);
-  ctx.fillStyle='rgba(61,123,255,0.05)';for(let i=0;i<h;i+=4)ctx.fillRect(x-w/2,top+i,w,2);
+  const s=w2s(d.gx,d.gy),x=s.x+camX,y=s.y+camY;if(cull(x,y-210))return;
+  const w=d.w,h=110,top=-64-h,acc=d.color;
+  const k=d.face==='ul'?-0.5:0.5; // 아이소 벽면 기울기 (ur: ↘, ul: ↗)
+  ctx.save();ctx.translate(x,y);ctx.transform(1,k,0,1,0,0);
+  ctx.fillStyle=P.bannerFrame;ctx.fillRect(-w/2+18,-64,8,64);ctx.fillRect(w/2-26,-64,8,64);
+  ctx.shadowColor=hexA(acc,0.5);ctx.shadowBlur=26;
+  roundRect(-w/2,top,w,h,10,'#0b1024');ctx.shadowBlur=0;   // LED 스크린은 테마 무관 다크
+  ctx.save();roundRectPath(-w/2,top,w,h,10);ctx.clip();
+  const pulse=0.75+0.25*Math.sin(t*1.8+d.gx);
+  const g=ctx.createLinearGradient(-w*0.36,0,w*0.36,0);
+  g.addColorStop(0,acc);g.addColorStop(.5,'#ffffff');g.addColorStop(1,acc);
+  ctx.shadowColor=hexA(acc,0.85*pulse);ctx.shadowBlur=22*pulse;
+  ctx.fillStyle=g;ctx.font='900 '+d.fs+'px Pretendard';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(d.text,0,top+h/2-8);ctx.shadowBlur=0;
+  ctx.fillStyle=hexA(acc,0.9);ctx.font='700 11px Pretendard';
+  ctx.fillText(d.sub,0,top+h-20);
+  ctx.fillStyle=hexA(acc,0.05);for(let i=0;i<h;i+=4)ctx.fillRect(-w/2,top+i,w,2);
   ctx.restore();
-  roundRectPath(x-w/2,top,w,h,10);ctx.strokeStyle=hexA('#3d7bff',0.8);ctx.lineWidth=2;ctx.stroke();
+  roundRectPath(-w/2,top,w,h,10);ctx.strokeStyle=hexA(acc,0.8);ctx.lineWidth=2;ctx.stroke();
+  ctx.restore();
 }
 
 function drawTree(d){
@@ -377,6 +407,26 @@ function drawTree(d){
   ctx.fillStyle='#7a5a3e';ctx.fillRect(x-3,y-26,6,26);
   ctx.fillStyle='#1f8f58';ctx.beginPath();ctx.moveTo(x,y-60);ctx.lineTo(x+22,y-24);ctx.lineTo(x-22,y-24);ctx.closePath();ctx.fill();
   ctx.fillStyle='#2fb474';ctx.beginPath();ctx.moveTo(x,y-84);ctx.lineTo(x+16,y-44);ctx.lineTo(x-16,y-44);ctx.closePath();ctx.fill();
+}
+
+function drawArcade(d,t){
+  const s=w2s(d.gx,d.gy),x=s.x+camX,y=s.y+camY;if(cull(x,y-110))return;
+  const w=62,h=86,top=y-8-h;
+  ctx.save();ctx.translate(x,y);ctx.scale(1,0.5);ctx.fillStyle=P.charShadow;ctx.beginPath();ctx.ellipse(0,0,30,14,0,0,Math.PI*2);ctx.fill();ctx.restore();
+  ctx.shadowColor=hexA(d.color,0.45);ctx.shadowBlur=14+5*Math.sin(t*2+d.gx);
+  roundRect(x-w/2,top,w,h,6,P.panel);ctx.shadowBlur=0;
+  roundRectPath(x-w/2,top,w,h,6);ctx.strokeStyle=hexA(d.color,0.8);ctx.lineWidth=1.5;ctx.stroke();
+  // 마퀴 + 게임명
+  ctx.fillStyle=d.color;ctx.fillRect(x-w/2+3,top+3,w-6,15);
+  ctx.fillStyle='#fff';ctx.font='800 9px Pretendard';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(d.label,x,top+11);
+  // 스크린 (LED 다크 + 낙하 픽셀)
+  ctx.fillStyle='#0b1024';ctx.fillRect(x-w/2+6,top+22,w-12,36);
+  for(let i=0;i<4;i++){const py=top+25+((t*26+i*9+d.gx*7)%30);ctx.fillStyle=hexA(d.color,0.85);ctx.fillRect(x-17+i*10,py,5,5);}
+  // 컨트롤 패널 + 버튼
+  ctx.fillStyle=P.counter;ctx.fillRect(x-w/2+6,top+63,w-12,13);
+  ctx.fillStyle=hexA(d.color,0.95);ctx.beginPath();ctx.arc(x-11,top+69.5,3.4,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.6)';ctx.beginPath();ctx.arc(x+11,top+69.5,3.4,0,Math.PI*2);ctx.fill();
 }
 
 function drawBench(d){
@@ -388,35 +438,35 @@ function drawBench(d){
 }
 
 function drawBooth(b,t){
-  const s=w2s(b.gx,b.gy),x=s.x+camX,y=s.y+camY;if(cull(x,y-150))return;
+  const s=w2s(b.gx,b.gy),x=s.x+camX,y=s.y+camY;if(cull(x,y-170))return;
   const acc=b.ex.accent;
   const pd=player.gx+player.gy,pp=w2s(player.gx,player.gy);let a=1;
-  if(b.d>pd+0.2){const sd=Math.hypot(s.x-pp.x,s.y-pp.y);if(sd<72)a=0.34;}
+  if(b.d>pd+0.2){const sd=Math.hypot(s.x-pp.x,s.y-pp.y);if(sd<84)a=0.34;}
   ctx.save();ctx.globalAlpha=a;
   // 카운터
-  const cw=66,ch=15,cy=y-4;
+  const cw=74,ch=16,cy=y-4;
   roundRect(x-cw/2,cy-ch,cw,ch,3,P.counter);
   ctx.fillStyle=hexA(acc,0.9);ctx.fillRect(x-cw/2,cy-ch,cw,4);
   ctx.fillStyle='rgba(255,255,255,0.05)';ctx.fillRect(x-cw/2,cy-ch+4,cw,ch-4);
   // 백월 디스플레이 (세로형)
-  const bw=78,bh=116,top=cy-ch-8-bh;
+  const bw=88,bh=132,top=cy-ch-8-bh;
   ctx.shadowColor=hexA(acc,0.4+0.35*b.glow);ctx.shadowBlur=14+16*b.glow;
   roundRect(x-bw/2,top,bw,bh,6,P.panel);ctx.shadowBlur=0;
   ctx.save();roundRectPath(x-bw/2,top,bw,bh,6);ctx.clip();
-  ctx.fillStyle=acc;ctx.fillRect(x-bw/2,top,bw,18);
-  ctx.fillStyle=P.screenBg;ctx.fillRect(x-bw/2,top+18,bw,bh-18);
+  ctx.fillStyle=acc;ctx.fillRect(x-bw/2,top,bw,20);
+  ctx.fillStyle=P.screenBg;ctx.fillRect(x-bw/2,top+20,bw,bh-20);
   ctx.strokeStyle=hexA(acc,0.55);ctx.lineWidth=1.5;
-  for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(x-bw/2+16,top+bh-28,5+i*5,0,Math.PI*1.5);ctx.stroke();}
-  ctx.fillStyle=hexA(acc,0.9);ctx.beginPath();ctx.arc(x+bw/2-14,top+bh-30,4,0,Math.PI*2);ctx.fill();
+  for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(x-bw/2+18,top+bh-31,6+i*6,0,Math.PI*1.5);ctx.stroke();}
+  ctx.fillStyle=hexA(acc,0.9);ctx.beginPath();ctx.arc(x+bw/2-16,top+bh-33,4.5,0,Math.PI*2);ctx.fill();
   ctx.restore();
   roundRectPath(x-bw/2,top,bw,bh,6);ctx.strokeStyle=hexA(acc,0.8);ctx.lineWidth=2;ctx.stroke();
   ctx.fillStyle='#fff';ctx.textBaseline='middle';
-  ctx.font='800 9px Pretendard';ctx.textAlign='left';ctx.fillText(b.code,x-bw/2+7,top+9);
-  ctx.font='700 8px Pretendard';ctx.textAlign='right';ctx.fillText('▶',x+bw/2-7,top+9);
-  ctx.fillStyle=P.ink;ctx.font='700 11px Pretendard';ctx.textAlign='left';ctx.textBaseline='top';
-  wrapText(b.ex.title,x-bw/2+10,top+27,bw-20,14,4,true);
-  ctx.fillStyle=P.inkSoft;ctx.font='600 8px Pretendard';
-  ctx.fillText(b.ex.team,x-bw/2+10,top+bh-13);
+  ctx.font='800 10px Pretendard';ctx.textAlign='left';ctx.fillText(b.code,x-bw/2+8,top+10);
+  ctx.font='700 9px Pretendard';ctx.textAlign='right';ctx.fillText('▶',x+bw/2-8,top+10);
+  ctx.fillStyle=P.ink;ctx.font='700 12px Pretendard';ctx.textAlign='left';ctx.textBaseline='top';
+  wrapText(b.ex.title,x-bw/2+11,top+30,bw-22,15,4,true);
+  ctx.fillStyle=P.inkSoft;ctx.font='600 9px Pretendard';
+  ctx.fillText(b.ex.team,x-bw/2+11,top+bh-14);
   // 행잉 사인
   const hy=top-16-Math.sin(t*2.5+b.gx)*2;
   roundRect(x-26,hy-10,52,18,4,P.chip);
@@ -442,6 +492,12 @@ function drawChar(e,t){
   ctx.fillStyle=e.head;ctx.beginPath();ctx.arc(x,by-30,7,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='rgba(0,0,0,0.10)';ctx.beginPath();ctx.arc(x+e.face*2,by-30,7,-0.4,1.0);ctx.fill();
   if(e.isPlayer){const yy=by-48+Math.sin(t*3)*2;ctx.fillStyle='#3d7bff';ctx.beginPath();ctx.moveTo(x,yy+6);ctx.lineTo(x-5,yy-2);ctx.lineTo(x+5,yy-2);ctx.closePath();ctx.fill();}
+  else if(e.nick){ // 닉네임 — 실제 유저처럼
+    ctx.font='600 9px Pretendard';const nw=ctx.measureText(e.nick).width+10;
+    ctx.globalAlpha=0.88;roundRect(x-nw/2,by-52,nw,14,7,P.chip);
+    ctx.fillStyle=P.ink;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(e.nick,x,by-45);
+    ctx.globalAlpha=1;
+  }
 }
 
 const parts=Array.from({length:40},()=>({x:Math.random(),y:Math.random(),s:Math.random()*1.6+0.4,sp:0.4+Math.random()*0.8}));
@@ -455,6 +511,7 @@ function drawMinimap(){
   mmx.strokeStyle='rgba(90,110,170,0.5)';mmx.lineWidth=1.4;mmx.strokeRect(X(1),Y(1),(HALL_W-3)*sc,(HALL_D-3)*sc);
   for(const b of BOOTHS){mmx.fillStyle=hexA(b.ex.accent,0.85);mmx.fillRect(X(b.gx)-3,Y(b.gy)-2,6,4);
     if(b===activeBooth){mmx.strokeStyle=P.ink;mmx.lineWidth=1.5;mmx.strokeRect(X(b.gx)-4,Y(b.gy)-3,8,6);}}
+  mmx.fillStyle='rgba(139,92,246,0.22)';mmx.fillRect(X(PG.x0),Y(PG.y0),(PG.x1-PG.x0+1)*sc,(PG.y1-PG.y0+1)*sc);
   mmx.fillStyle='#4d8bff';mmx.fillRect(X(PLAZA.x)-4,Y(PLAZA.y-3.5)-1.5,8,3);
   mmx.fillStyle=P.mmNpc;for(const n of npcs){mmx.beginPath();mmx.arc(X(n.gx),Y(n.gy),1.6,0,Math.PI*2);mmx.fill();}
   mmx.fillStyle='#3d7bff';mmx.beginPath();mmx.arc(X(player.gx),Y(player.gy),3.4,0,Math.PI*2);mmx.fill();mmx.strokeStyle='#fff';mmx.lineWidth=1;mmx.stroke();
@@ -467,14 +524,14 @@ function render(t,dt){
   const ents=[];
   for(const w of WALLS)ents.push({type:'wall',d:w.d,obj:w});
   for(const tr of TRACKS)ents.push({type:'banner',d:tr.sign.x+tr.sign.y,obj:tr});
-  for(const d of DECOR)ents.push({type:d.type,d:d.gx+d.gy,obj:d});
+  for(const d of DECOR)ents.push({type:d.type,d:d.zd??(d.gx+d.gy),obj:d});
   for(const b of BOOTHS)ents.push({type:'booth',d:b.d,obj:b});
   ents.push({type:'char',d:player.gx+player.gy,obj:player});
   for(const n of npcs)ents.push({type:'char',d:n.gx+n.gy,obj:n});
   ents.sort((a,b)=>a.d-b.d);
   for(const e of ents){const k=e.type;
     if(k==='wall')drawWall(e.obj);else if(k==='banner')drawBanner(e.obj);
-    else if(k==='billboard')drawBillboard(e.obj,t);else if(k==='tree')drawTree(e.obj);else if(k==='bench')drawBench(e.obj);
+    else if(k==='billboard')drawBillboard(e.obj,t);else if(k==='tree')drawTree(e.obj);else if(k==='bench')drawBench(e.obj);else if(k==='arcade')drawArcade(e.obj,t);
     else if(k==='booth')drawBooth(e.obj,t);else drawChar(e.obj,t);}
   drawParticles(dt);drawMinimap();
 }
