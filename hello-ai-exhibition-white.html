@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="white">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>S.LSI Hello AI Hackathon · 전시관 (White)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<link rel="stylesheet" href="exhibition.css" />
+</head>
+<body>
+<canvas id="game"></canvas>
+<div class="vignette"></div>
+
+<div class="hud topbar">
+  <div class="brand">S</div>
+  <div class="brand-txt">
+    <div class="t1">Hello AI Hackathon</div>
+    <div class="t2">S.LSI · AX Challenge 전시관</div>
+  </div>
+</div>
+
+<div class="hud zonepill" id="zonePill"><span class="zd"></span><span id="zoneTxt">입구</span></div>
+
+<div class="hud minimap-wrap">
+  <div class="mm-title">Expo Map</div>
+  <canvas id="minimap" width="172" height="172"></canvas>
+</div>
+
+<div class="hud controls">
+  <div class="key-hint"><div class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div><span>이동 · <kbd>Space</kbd> 관람</span></div>
+</div>
+
+<button class="act-btn" id="actBtn">▶ 관람하기</button>
+<div class="touchpad" id="touchpad">
+  <button class="pad-btn" data-dx="-1" data-dy="-1">↖</button>
+  <button class="pad-btn" data-dx="0"  data-dy="-1">↑</button>
+  <button class="pad-btn" data-dx="1"  data-dy="-1">↗</button>
+  <button class="pad-btn" data-dx="-1" data-dy="0">←</button>
+  <span class="pad-btn pad-empty"></span>
+  <button class="pad-btn" data-dx="1"  data-dy="0">→</button>
+  <button class="pad-btn" data-dx="-1" data-dy="1">↙</button>
+  <button class="pad-btn" data-dx="0"  data-dy="1">↓</button>
+  <button class="pad-btn" data-dx="1"  data-dy="1">↘</button>
+</div>
+
+<div class="chat" id="chat">
+  <div class="chat-head" id="chatHead">
+    <span class="chat-title"><span class="live-dot"></span>전체 채팅</span>
+    <span class="chat-count" id="chatCount">접속 1명</span>
+    <button class="chat-toggle" id="chatToggle" aria-label="접기/펴기">▾</button>
+  </div>
+  <div class="chat-body" id="chatBody"></div>
+  <div class="chat-input">
+    <input id="chatText" type="text" maxlength="200" placeholder="메시지를 입력하세요…" autocomplete="off" />
+    <button id="chatSend">전송</button>
+  </div>
+</div>
+
+<div class="intro" id="intro">
+  <div class="intro-card">
+    <div class="eyebrow"><span class="dot"></span>S.LSI AI EXHIBITION CAMPUS</div>
+    <h1>Hello AI Hackathon<br/>전시 부스를 둘러보세요</h1>
+    <p>중앙 광장을 중심으로 <b style="color:var(--text)">5개 트랙</b>의 부스가 늘어선 직사각형 전시홀입니다.<br/>
+       통로를 따라 이동하며 부스에 다가가 <b style="color:var(--blue-glow)">관람</b>하면<br/>
+       프로젝트 소개 · 데모영상 · 팀 정보를 볼 수 있습니다.</p>
+    <div class="stat-row">
+      <div class="stat"><div class="n">20</div><div class="l">참가 팀</div></div>
+      <div class="stat"><div class="n">5</div><div class="l">트랙 · 섹션</div></div>
+      <div class="stat"><div class="n">∞</div><div class="l">둘러보기</div></div>
+    </div>
+    <button class="enter-btn" id="enterBtn">캠퍼스 입장하기</button>
+    <div class="intro-keys">
+      <span><kbd>WASD</kbd>/<kbd>화살표</kbd> 이동</span><span><kbd>Space</kbd>/클릭 관람</span>
+    </div>
+  </div>
+</div>
+
+<div class="modal-back" id="modalBack"><div class="modal" id="modal"></div></div>
+
+<script src="exhibition.js"></script>
+</body>
+</html>
