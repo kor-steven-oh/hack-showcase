@@ -10,12 +10,17 @@ S.LSI Hello AI Hackathon 전시관 — a 2D isometric virtual exhibition hall re
 
 No build step; only external dependency is the Pretendard CDN link.
 
-- `exhibition.js` — all logic (shared by both themes)
+- `js/` — logic, split into classic scripts sharing globals; **load order matters** (theme → data → world → render → main, as listed in the HTML):
+  - `theme.js` — canvas color palettes (`PALETTES`, `P`)
+  - `data.js` — `TRACKS` + seeded sample `EXHIBITS`
+  - `world.js` — geometry constants, math helpers, `BOOTHS`/`DECOR` placement, `FLOOR`/`WALLS` precompute, collision (`walkable`)
+  - `render.js` — canvas setup, all `draw*` functions, minimap, `render()`
+  - `main.js` — player/NPC entities, input, `update()`, rAF loop, modal, chat
 - `exhibition.css` — all styles; theme colors live in CSS variables (`:root` = dark defaults, `[data-theme="white"]` = light overrides)
 - `hello-ai-exhibition.html` — dark theme entry point (markup only)
 - `hello-ai-exhibition-white.html` — light theme entry point; identical markup except `<html data-theme="white">` and title
 
-Theming: DOM colors come from CSS variables. Canvas colors come from the `PALETTES` object at the top of `exhibition.js`, selected via `document.documentElement.dataset.theme`. A new color used in canvas drawing must be added to **both** palettes; markup changes must be mirrored in both HTML files (they share css/js, only the `<body>` is duplicated).
+Theming: DOM colors come from CSS variables. Canvas colors come from the `PALETTES` object in `js/theme.js`, selected via `document.documentElement.dataset.theme`. A new color used in canvas drawing must be added to **both** palettes; markup changes must be mirrored in both HTML files (they share css/js, only the `<body>` is duplicated).
 
 ## Run
 
@@ -25,9 +30,9 @@ Open the HTML file in a browser — no server needed:
 open hello-ai-exhibition.html
 ```
 
-## Code architecture (`exhibition.js`)
+## Code architecture (`js/`)
 
-Sections are marked with `/* ---------- 섹션명 ---------- */` comments, in order:
+Sections are marked with `/* ---------- 섹션명 ---------- */` comments:
 
 0. **테마 팔레트** — `PALETTES.dark/.white`, canvas-only colors (see Theming above).
 1. **트랙(5)** — `TRACKS` array: 5 tracks (T1 설계·EDA … T5 개발생산성·DevX), each with accent color, tagline, tags, and project titles.

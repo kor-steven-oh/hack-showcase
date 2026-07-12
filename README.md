@@ -33,10 +33,14 @@ open hello-ai-exhibition-white.html  # 화이트 테마
 
 | 파일 | 역할 |
 |---|---|
-| `exhibition.js` | 모든 로직 (지오메트리·렌더·입력·데이터). 두 테마 공유 |
+| `js/theme.js` | 캔버스 테마 팔레트 |
+| `js/data.js` | 트랙 정의 + 샘플 전시 데이터 |
+| `js/world.js` | 지오메트리 · 부스/장식 배치 · 바닥/벽 · 충돌 |
+| `js/render.js` | 캔버스 draw 함수 · 미니맵 · 렌더 |
+| `js/main.js` | 플레이어/NPC · 입력 · 게임 루프 · 모달 · 채팅 |
 | `exhibition.css` | 스타일. 테마 색은 CSS 변수 (`:root` 다크, `[data-theme="white"]` 오버라이드) |
-| `hello-ai-exhibition*.html` | 얇은 진입점 (마크업만, `data-theme`과 title만 다름) |
+| `hello-ai-exhibition*.html` | 얇은 진입점 (마크업만, `data-theme`과 title만 다름). 스크립트 로드 순서 유지 필요 |
 
 ## 데이터 교체
 
-부스 20개는 `exhibition.js`의 `EXHIBITS`에서 seeded PRNG로 생성한 샘플입니다. 실제 프로젝트 데이터로 바꾸려면 그 블록을 교체하세요. `videoUrl`에 유튜브 영상 ID를 넣으면 상세 모달에서 재생됩니다.
+부스 20개는 `js/data.js`의 `EXHIBITS`에서 seeded PRNG로 생성한 샘플입니다. 실제 프로젝트 데이터로 바꾸려면 그 블록을 교체하세요. `videoUrl`에 유튜브 영상 ID를 넣으면 상세 모달에서 재생됩니다.

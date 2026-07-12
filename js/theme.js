@@ -1,0 +1,56 @@
+/* 테마 팔레트 (canvas 전용 색) — DOM 색은 exhibition.css 변수 */
+
+/* ---------- 테마 팔레트 (canvas) ---------- */
+const PALETTES={
+ dark:{
+  wallUlA:'#2a3560',
+  wallUlB:'#141d3f',
+  wallA:'#20294d',
+  wallB:'#0e1533',
+  bgA:'#0a0f24',
+  bgB:'#06080f',
+  playerHead:'#eaf0ff',
+  npcHead:'#dfe6fb',
+  floorA:'#0c1128',
+  floorB:'#0a0e22',
+  floorLine:'rgba(60,80,140,0.10)',
+  entranceInk:'rgba(210,222,255,0.5)',
+  bannerFrame:'#141c3c',
+  screenBg:'#0b1024',
+  counter:'#141d3f',
+  panel:'#0a0f24',
+  ink:'#eaf0ff',
+  inkSoft:'rgba(180,196,235,0.85)',
+  chip:'#161d3d',
+  charShadow:'rgba(0,0,0,0.35)',
+  particle:'120,150,255',
+  mmBg:'#080c1a',
+  mmNpc:'rgba(200,210,240,0.5)'
+ },
+ white:{
+  wallUlA:'#e7ebf4',
+  wallUlB:'#d7dde9',
+  wallA:'#e1e6f0',
+  wallB:'#d0d7e6',
+  bgA:'#ffffff',
+  bgB:'#e9edf5',
+  playerHead:'#0f1836',
+  npcHead:'#0f1836',
+  floorA:'#eef1f8',
+  floorB:'#f2f4fa',
+  floorLine:'rgba(30,55,120,0.07)',
+  entranceInk:'rgba(30,50,150,0.55)',
+  bannerFrame:'#ccd5e6',
+  screenBg:'#f4f6fc',
+  counter:'#d7dde9',
+  panel:'#ffffff',
+  ink:'#0f1836',
+  inkSoft:'rgba(90,105,140,0.92)',
+  chip:'#eef1f8',
+  charShadow:'rgba(30,45,90,0.16)',
+  particle:'50,80,180',
+  mmBg:'#f0f3fa',
+  mmNpc:'rgba(95,108,148,0.6)'
+ },
+};
+const P=PALETTES[document.documentElement.dataset.theme]||PALETTES.dark;
