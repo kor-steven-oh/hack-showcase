@@ -22,20 +22,25 @@ for(let i=0;i<20;i++){
     speed:2.1+Math.random()*1.2,state:'walk',timer:0,phase:Math.random()*7,moving:true,face:1,isPlayer:false,tx:0,ty:0};
   npcTarget(n); npcs.push(n);
 }
+const CHARS=[player,...npcs]; // 렌더 depth 병합용 — 멤버 고정, 매 프레임 d만 갱신
 
 /* ---------- 입력 ---------- */
 const keys={};
 const K_UP=['w','ArrowUp'],K_DOWN=['s','ArrowDown'],K_LEFT=['a','ArrowLeft'],K_RIGHT=['d','ArrowRight'];
-let started=false,activeBooth=null,modalOpen=false;
+let started=false,activeBooth=null,activeArcade=null,modalOpen=false;
 addEventListener('keydown',e=>{
   if(e.target&&(e.target.tagName==='INPUT'||e.target.isContentEditable))return;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();
   const k=e.key.length===1?e.key.toLowerCase():e.key; keys[k]=true;
-  if(k===' '&&started&&!modalOpen&&activeBooth)openModal(activeBooth.ex);
+  if(k===' '&&started&&!e.repeat){
+    if(gameOpen)gameTap();
+    else if(!modalOpen&&activeBooth)openModal(activeBooth.ex);
+    else if(!modalOpen&&activeArcade)openGame();
+  }
   if(k==='Escape'&&modalOpen)closeModal();
 });
 addEventListener('keyup',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;keys[k]=false;});
-cv.addEventListener('click',()=>{if(started&&!modalOpen&&activeBooth)openModal(activeBooth.ex);});
+cv.addEventListener('click',()=>{if(started&&!modalOpen){if(activeBooth)openModal(activeBooth.ex);else if(activeArcade)openGame();}});
 const down=l=>l.some(k=>keys[k]);
 
 let padVec={x:0,y:0}, actBtn=null;
@@ -48,7 +53,7 @@ let padVec={x:0,y:0}, actBtn=null;
     ['pointerup','pointerleave','pointercancel'].forEach(ev=>btn.addEventListener(ev,off));
   });
   actBtn=document.getElementById('actBtn');
-  actBtn.addEventListener('pointerdown',e=>{e.preventDefault();if(started&&!modalOpen&&activeBooth)openModal(activeBooth.ex);});
+  actBtn.addEventListener('pointerdown',e=>{e.preventDefault();if(started&&!modalOpen){if(activeBooth)openModal(activeBooth.ex);else if(activeArcade)openGame();}});
 })();
 
 /* ---------- 업데이트 ---------- */
@@ -74,6 +79,9 @@ function update(dt,t){
 
   activeBooth=null;let best=1.5;
   for(const b of BOOTHS){const dd=dist(player.gx,player.gy,b.view.x,b.view.y);if(dd<best){best=dd;activeBooth=b;}}
+  activeArcade=null;
+  if(!activeBooth){let ab=1.8;
+    for(const d of DECOR){if(!d.game)continue;const dd=dist(player.gx,player.gy,d.gx,d.gy+0.8);if(dd<ab){ab=dd;activeArcade=d;}}}
   for(const b of BOOTHS)b.glow=lerp(b.glow,(b===activeBooth?1:0.28),0.18);
 
   let lbl='이동 통로',col='#4d8bff';
@@ -85,9 +93,11 @@ function update(dt,t){
     else if(player.gx>=PG.x0-0.5&&player.gx<=PG.x1+0.5&&player.gy>=PG.y0-1&&player.gy<=PG.y1+1){lbl='플레이그라운드 · Playground';col='#a78bfa';}}
   zoneTxt.textContent=lbl; zonePill.style.color=col;
   const zd=zonePill.querySelector('.zd'); if(zd){zd.style.background=col;zd.style.boxShadow='0 0 10px '+col;}
-  if(actBtn)actBtn.classList.toggle('on',!!(started&&!modalOpen&&activeBooth));
+  if(actBtn){actBtn.classList.toggle('on',!!(started&&!modalOpen&&(activeBooth||activeArcade)));
+    actBtn.textContent=activeArcade?'▶ 게임하기':'▶ 관람하기';}
 
-  const ps=w2s(player.gx,player.gy);const tx=W/2-ps.x,ty=H/2-40-ps.y;
+  const ps=w2s(player.gx,player.gy);player.sx=ps.x;player.sy=ps.y;
+  const tx=W/2-ps.x,ty=H/2-40-ps.y;
   if(initCam){camX=tx;camY=ty;initCam=false;}
   camX=lerp(camX,tx,0.12);camY=lerp(camY,ty,0.12);
 }
@@ -126,8 +136,48 @@ function openModal(ex){
     </div>`;
   modalBack.classList.add('open');document.getElementById('mClose').onclick=closeModal;
 }
-function closeModal(){modalOpen=false;modalBack.classList.remove('open');}
+function closeModal(){modalOpen=false;gameOpen=false;if(gameTid){clearTimeout(gameTid);gameTid=0;}modalBack.classList.remove('open');}
 modalBack.addEventListener('click',e=>{if(e.target===modalBack)closeModal();});
+
+/* ---------- 미니게임: 반응속도 ---------- */
+// ponytail: 게임 종류가 늘면 game 키별 open 함수 라우팅으로 확장
+let gameOpen=false,gameSt='idle',gameTid=0,gameT0=0,gameBest=null;
+function openGame(){
+  modalOpen=true;gameOpen=true;gameSt='idle';
+  const acc='#21a17a';
+  modal.innerHTML=`
+    <div class="m-head">
+      <div class="accent-line" style="background:linear-gradient(90deg,${acc},transparent)"></div>
+      <button class="m-close" id="mClose">✕</button>
+      <span class="m-track" style="color:${acc};background:${hexA(acc,0.12)};border:1px solid ${hexA(acc,0.35)}">PLAYGROUND · 미니게임</span>
+      <div class="m-title">반응속도</div>
+      <div class="m-team">초록색으로 바뀌는 순간, 최대한 빨리 Space 또는 클릭!</div>
+    </div>
+    <div class="m-body"><div class="game-pad" id="gamePad"></div></div>`;
+  modalBack.classList.add('open');
+  document.getElementById('mClose').onclick=closeModal;
+  document.getElementById('gamePad').addEventListener('pointerdown',e=>{e.preventDefault();gameTap();});
+  setPad('idle','반응속도 테스트','Space 또는 클릭으로 시작');
+}
+function setPad(cls,big,small){
+  const p=document.getElementById('gamePad');if(!p)return;
+  p.className='game-pad '+cls;
+  p.innerHTML=`<div class="g-big">${big}</div><div class="g-small">${small}</div>`;
+}
+function gradeMs(ms){return ms<180?'⚡ 초인적':ms<250?'🔥 빠름':ms<350?'👍 평균':'🐢 느긋하시네요';}
+function gameTap(){
+  if(gameSt==='idle'||gameSt==='result'){
+    gameSt='wait';setPad('wait','기다리세요…','초록색이 되면 바로!');
+    gameTid=setTimeout(()=>{gameTid=0;gameSt='go';gameT0=performance.now();setPad('go','지금!','Space / 클릭');},1000+Math.random()*2500);
+  }else if(gameSt==='wait'){
+    clearTimeout(gameTid);gameTid=0;
+    gameSt='result';setPad('fail','너무 빨라요 😅','초록색을 기다렸다 눌러야 해요 · Space로 재도전');
+  }else if(gameSt==='go'){
+    const ms=Math.round(performance.now()-gameT0);
+    if(gameBest===null||ms<gameBest)gameBest=ms;
+    gameSt='result';setPad('result',ms+'ms',gradeMs(ms)+' · 최고 기록 '+gameBest+'ms · Space로 재도전');
+  }
+}
 
 /* ---------- 전체 채팅 ---------- */
 const chat=document.getElementById('chat'),chatBody=document.getElementById('chatBody'),

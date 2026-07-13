@@ -19,7 +19,7 @@ function hexA(hex,a){const n=parseInt(hex.slice(1),16);return`rgba(${(n>>16)&255
 function mix(h1,h2,t){const a=parseInt(h1.slice(1),16),b=parseInt(h2.slice(1),16);
   const r=Math.round(lerp((a>>16)&255,(b>>16)&255,t)),g=Math.round(lerp((a>>8)&255,(b>>8)&255,t)),bl=Math.round(lerp(a&255,b&255,t));
   return`rgb(${r},${g},${bl})`;}
-function cull(x,y){return x<-140||x>W+140||y<-190||y>H+210;}
+function cull(x,y){x+=camX;y+=camY;return x<-140||x>W+140||y<-190||y>H+210;} // 월드 스크린 좌표 기준(렌더는 translate(camX,camY) 하에 그림)
 
 const BOOTHS=[];
 TRACKS.forEach((tr,ti)=>{
@@ -52,7 +52,7 @@ const DECOR=[
   {type:'tree',gx:22,gy:3},{type:'tree',gx:38,gy:3},
   // 플레이그라운드: 아케이드 미니게임 캐비닛 + 벤치 + 나무
   {type:'arcade',gx:65,gy:14,label:'두더지 잡기',color:'#e0533f'},
-  {type:'arcade',gx:70,gy:14,label:'반응속도',color:'#21a17a'},
+  {type:'arcade',gx:70,gy:14,label:'반응속도',color:'#21a17a',game:'reaction'},
   {type:'arcade',gx:75,gy:14,label:'타자 배틀',color:'#e0872f'},
   {type:'arcade',gx:65,gy:24,label:'AI 퀴즈',color:'#1a8fe3'},
   {type:'arcade',gx:70,gy:24,label:'가위바위보',color:'#c78bff'},
@@ -60,6 +60,11 @@ const DECOR=[
   {type:'bench',gx:63,gy:19},{type:'bench',gx:77,gy:19},
   {type:'tree',gx:63,gy:30},{type:'tree',gx:77,gy:30},
 ];
+
+/* 정적 스크린 좌표 캐시 — 매 프레임 w2s 재계산 방지 */
+for(const b of BOOTHS){const s=w2s(b.gx,b.gy);b.sx=s.x;b.sy=s.y;}
+TRACKS.forEach(tr=>{const s=w2s(tr.sign.x,tr.sign.y);tr.sx=s.x;tr.sy=s.y;});
+for(const d of DECOR){const s=w2s(d.gx,d.gy);d.sx=s.x;d.sy=s.y;}
 
 /* ---------- 바닥 사전계산 ---------- */
 function carpetTrack(gx,gy){for(let i=0;i<ZONES.length;i++){const z=ZONES[i];
