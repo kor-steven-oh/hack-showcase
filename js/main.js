@@ -25,6 +25,22 @@ for(let i=0;i<20;i++){
     speed:2.1+Math.random()*1.2,state:'walk',timer:0,phase:Math.random()*7,moving:true,face:1,isPlayer:false,tx:0,ty:0};
   npcTarget(n); npcs.push(n);
 }
+/* 안내 도슨트 봇(4) — 홀을 순회하는 로봇 가이드. 다가가면 멈추고, Space → 전시관 안내(openInfo) */
+const GUIDE_TIPS=['안녕하세요, 안내 도슨트예요. Space로 말 걸어보세요!','부스 앞에서 Space를 누르면 프로젝트를 자세히 볼 수 있어요','미니게임은 우측 위 플레이그라운드에 있어요 🎮','응원 한마디는 중앙 통로 메시지 월에 남겨주세요 💬','쉬어가실 땐 우측 아래 카페 라운지로 오세요 ☕','트랙은 5개, 부스는 총 20개랍니다'];
+const guides=[[PLAZA.x,PLAZA.y+3],[12,8],[48,8],[70,24]].map((p,i)=>{
+  const g={gx:p[0],gy:p[1],nick:'🤖 도슨트 '+(i+1),color:'#f5c542',head:'#d8dce6',isBot:1,
+    speed:1.7,state:'walk',timer:0,phase:i*1.7,moving:true,face:1,isPlayer:false,tx:0,ty:0,
+    act:'info',tipT:3+i*4,tipI:i}; // tipT/tipI 엇갈림 — 동시에 같은 멘트 안 하도록
+  npcTarget(g);npcs.push(g);return g; // npcs에 편입 — 배회 상태머신·CHARS·rebuild() 전부 공짜
+});
+function guideTarget(g){ // 후보 6개 중 다른 도슨트들과 가장 먼 목적지 선택 — 분산 순찰
+  let bx=g.tx,by=g.ty,bs=-1;
+  for(let k=0;k<6;k++){npcTarget(g);
+    let md=Infinity;for(const o of guides)if(o!==g)md=Math.min(md,dist(g.tx,g.ty,o.gx,o.gy));
+    if(md>bs){bs=md;bx=g.tx;by=g.ty;}}
+  g.tx=bx;g.ty=by;
+}
+
 /* 로봇청소기 — 통로를 쉼 없이 순회하며 청소. trail: 지나온 자리 반짝 자국 */
 const vac={gx:HALL_W/2+3,gy:HALL_D-4,isVac:true,speed:1.4,tx:0,ty:0,trail:[],trailT:0,face:1,moving:true,phase:0};
 {const p=randAisle();vac.tx=p.x;vac.ty=p.y;}
@@ -54,7 +70,11 @@ addEventListener('keydown',e=>{
   if(k==='Escape'&&modalOpen)closeModal();
 });
 addEventListener('keyup',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;keys[k]=false;});
-cv.addEventListener('click',()=>{if(started&&!modalOpen)interact();});
+cv.addEventListener('click',e=>{ // 클릭 지점으로 이동 — 모달 오픈은 Space/액션 버튼 전용
+  if(!started||modalOpen)return;
+  const a=2*(e.clientX-camX)/TW, b=2*(e.clientY-camY)/TH; // w2s 역변환 (렌더는 translate(camX,camY))
+  player.tgt={x:clamp((a+b)/2,1.4,HALL_W-2.6),y:clamp((b-a)/2,1.4,HALL_D-1.8)};
+});
 const down=l=>l.some(k=>keys[k]);
 
 let padVec={x:0,y:0}, actBtn=null;
@@ -77,7 +97,14 @@ function update(dt,t){
   if(started&&!modalOpen){
     let h=(down(K_RIGHT)?1:0)-(down(K_LEFT)?1:0)+padVec.x, v=(down(K_DOWN)?1:0)-(down(K_UP)?1:0)+padVec.y;
     h=clamp(h,-1,1);v=clamp(v,-1,1);
-    if(h||v){const m=Math.hypot(h,v)||1;h/=m;v/=m;const sp=6*dt;moveEnt(player,(v+h)*sp,(v-h)*sp);player.moving=true;player.phase+=dt*11;if(h)player.face=h>0?1:-1;}
+    if(h||v){player.tgt=null;const m=Math.hypot(h,v)||1;h/=m;v/=m;const sp=6*dt;moveEnt(player,(v+h)*sp,(v-h)*sp);player.moving=true;player.phase+=dt*11;if(h)player.face=h>0?1:-1;}
+    else if(player.tgt){ // 클릭 이동 — NPC와 동일 추적, 도착·벽 막힘 시 해제
+      const dx=player.tgt.x-player.gx,dy=player.tgt.y-player.gy,dd=Math.hypot(dx,dy);
+      const bx=player.gx,by=player.gy;
+      if(dd>0.02)moveEnt(player,dx/dd*Math.min(6*dt,dd),dy/dd*Math.min(6*dt,dd));
+      if(dd<0.15||(Math.abs(player.gx-bx)<1e-4&&Math.abs(player.gy-by)<1e-4)){player.tgt=null;player.moving=false;}
+      else{player.moving=true;player.phase+=dt*11;if(Math.abs(dx)>0.05)player.face=dx>0?1:-1;}
+    }
     else player.moving=false;
   } else player.moving=false;
 
@@ -86,9 +113,17 @@ function update(dt,t){
       const dx=n.tx-n.gx,dy=n.ty-n.gy,dd=Math.hypot(dx,dy);
       if(dd<0.2){n.state='view';n.timer=2+Math.random()*3;n.moving=false;}
       else{const sp=n.speed*dt,bx=n.gx,by=n.gy;moveEnt(n,dx/dd*sp,dy/dd*sp);
-        if(Math.abs(n.gx-bx)<1e-4&&Math.abs(n.gy-by)<1e-4)npcTarget(n);
+        if(Math.abs(n.gx-bx)<1e-4&&Math.abs(n.gy-by)<1e-4)(n.isBot?guideTarget:npcTarget)(n);
         n.moving=true;n.phase+=dt*10;if(Math.abs(dx)>0.01)n.face=dx>0?1:-1;}
-    }else{n.timer-=dt;if(n.timer<=0)npcTarget(n);}
+    }else{n.timer-=dt;if(n.timer<=0)(n.isBot?guideTarget:npcTarget)(n);}
+  }
+  for(const g of guides){ // 도슨트 — 플레이어 접근 시 멈춰 마주보기 + 안내 멘트 순환 말풍선
+    if(dist(player.gx,player.gy,g.gx,g.gy)<2.4){
+      g.state='view';g.timer=1;g.moving=false;
+      g.face=player.gx>g.gx?1:-1;
+    }
+    g.tipT-=dt;
+    if(g.tipT<=0){g.tipT=16;g.say=GUIDE_TIPS[g.tipI++%GUIDE_TIPS.length];g.sayUntil=t+6;g._sayLines=null;}
   }
   { // 로봇청소기 — NPC와 달리 멈추지 않고 통로 웨이포인트 연속 순회
     const dx=vac.tx-vac.gx,dy=vac.ty-vac.gy,dd=Math.hypot(dx,dy);
@@ -108,7 +143,9 @@ function update(dt,t){
   for(const b of BOOTHS){const dd=dist(player.gx,player.gy,b.view.x,b.view.y);if(dd<best){best=dd;activeBooth=b;}}
   activeSpot=null;
   if(!activeBooth){let ab=1.9;
-    for(const d of DECOR){if(!d.act)continue;const dd=dist(player.gx,player.gy,d.gx,d.gy+0.8);if(dd<ab){ab=dd;activeSpot=d;}}}
+    for(const d of DECOR){if(!d.act)continue;const dd=dist(player.gx,player.gy,d.gx,d.gy+0.8);if(dd<ab){ab=dd;activeSpot=d;}}
+    for(const g of guides){const gd=dist(player.gx,player.gy,g.gx,g.gy);
+      if(gd<ab){ab=gd;activeSpot=g;}}} // 도슨트도 안내 스팟 — actSpot의 'info' 라우팅 재사용
   for(const b of BOOTHS)b.glow=lerp(b.glow,(b===activeBooth?1:0.28),0.18);
 
   let lbl='이동 통로',col='#4d8bff';
@@ -216,7 +253,7 @@ function openInfo(){
   const acc='#3d7bff';
   openSpotModal(spotHead(acc,'INFORMATION · 안내','전시관 안내','5개 트랙 20개 부스, 광장과 플레이그라운드까지 천천히 둘러보세요')+
     `<div class="m-body">
-      <div class="m-summary">이동 <b>WASD / 방향키</b> · 관람 <b>Space / 클릭</b> · 미니게임은 우측 플레이그라운드, 휴식은 입구 왼쪽 카페 라운지에서.</div>
+      <div class="m-summary">이동 <b>WASD / 방향키 / 클릭</b> · 관람 <b>Space</b> · 미니게임은 우측 플레이그라운드, 휴식은 입구 왼쪽 카페 라운지에서.</div>
       <div class="lib-list" style="margin-top:12px">${TRACKS.map(tr=>`<div class="lib-row"><div class="lib-term" style="color:${tr.accent}">${tr.code}</div><div class="lib-desc"><b>${tr.name}</b> — ${tr.tagline}</div></div>`).join('')}</div>
     </div>`);
 }

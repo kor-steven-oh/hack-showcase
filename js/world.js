@@ -67,8 +67,10 @@ const DECOR=[
   {type:'cafebar',gx:69,gy:26.5},
   // 서비스 라인(위쪽 가장자리): 음식 진열대 2 · 음료 쿨러 1 · 자판기 3 한쪽 밀집 나열
   {type:'foodcase',gx:63.5,gy:22.4},{type:'foodcase',gx:66.7,gy:22.4},
-  {type:'fridge',gx:70,gy:22.3},
+  {type:'fridge',gx:68.4,gy:22.3},{type:'fridge',gx:70,gy:22.3},{type:'fridge',gx:71.8,gy:22.3},
   {type:'vending',gx:73.6,gy:22.2},{type:'vending',gx:75.8,gy:22.2,color:'#21a17a'},{type:'vending',gx:78,gy:22.2,color:'#1a8fe3'},
+  // 디저트 진열대 — 좌석 클러스터(착석 방문객) 주변 3곳
+  {type:'foodcase',gx:62.4,gy:31.3,sk:-0.5},{type:'foodcase',gx:70.9,gy:29.2},{type:'foodcase',gx:72.6,gy:36.4,sk:-0.5},
   // 좌석: 긴 테이블 2 + 원탁 5 믹스 (의자 fl = 반대편 마주 앉기)
   // 긴 테이블 A (gx축) — 4인석, 3명 그룹 착석
   {type:'longtable',gx:65.5,gy:30,sk:0.5},
@@ -85,6 +87,9 @@ const DECOR=[
   {type:'table',gx:75.5,gy:37},{type:'chair',gx:74.2,gy:37,sk:0.5},{type:'chair',gx:75.5,gy:35.7,sk:-0.5},
   {type:'table',gx:64.5,gy:39},{type:'chair',gx:63.2,gy:39,sk:0.5},{type:'chair',gx:64.5,gy:37.7,sk:-0.5},
   {type:'sofa',gx:66.5,gy:41.2,color:'#a45a44',sk:-0.5},{type:'table',gx:69.3,gy:41.3},{type:'sofa',gx:72,gy:41.2,color:'#a45a44',sk:-0.5,fl:1}, // 테이블 사이 마주보기
+  // 동쪽 소파 라운지 (카페바 오른쪽 빈 공간) — gy축 마주보기 쌍 + 테이블, 서비스 라인 옆 대기 소파 1
+  {type:'sofa',gx:77.5,gy:25.2,sk:0.5,color:'#a45a44'},{type:'table',gx:77.5,gy:27.2},{type:'sofa',gx:77.5,gy:29.2,sk:0.5,fl:1,color:'#a45a44'},
+  {type:'sofa',gx:63.6,gy:24.9,sk:-0.5,color:'#a45a44'},
   // 앉아 있는 방문객 (의자 좌표와 일치, 의자 뒤 선언 — 3명 그룹 · 2명 마주 · 2명 · 싱글)
   {type:'sitter',gx:64.6,gy:28.8,color:'#12b3a6',nick:'라떼장인'},
   {type:'sitter',gx:66.4,gy:28.8,color:'#e0872f',nick:'모카홀릭'},
