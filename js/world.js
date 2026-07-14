@@ -37,27 +37,31 @@ TRACKS.forEach((tr,ti)=>{
 /* ---------- 장식 (실내 캠퍼스: 라운지 · 라이브러리 · 아이디어 월 · 스테이지) ---------- */
 /* act: 상호작용 종류 — game/idea/lib/info (main.js actSpot 라우팅) */
 const DECOR=[
-  {type:'billboard',gx:PLAZA.x,gy:PLAZA.y-3.5,text:'HELLO AI',sub:'S.LSI  HACKATHON  EXPO',color:'#3d7bff',w:250,fs:40,face:'ur'},
+  {type:'billboard',gx:PLAZA.x,gy:PLAZA.y-3.5,text:'HELLO AI',sub:'S.LSI  HACKATHON  EXPO',color:'#3d7bff',w:250,fs:40,face:'ur'}, // 고정 문구 (애니메이션 없음)
   // 트랙 존 중앙 라운지 — 트랙 색 소파 4개가 긴 테이블을 두고 두 대각선에서 정면으로 마주봄
   // + 소파 위 착석 방문객 2~3명 (좌석을 시청자 쪽으로 반 타일 내밀어 d가 소파보다 커짐 — 소파에 안 가려짐)
   ...ZONES.flatMap((z,i)=>{
-    const c=TRACKS[i].accent;
+    const c=TRACKS[i].accent,lx=z.cx-2; // 라운지 전체 2칸 왼쪽(-gx) — 부스 전시월과 안 겹침
     const NK=['부스투어중','데모구경','질문있어요','메모중','열공모드','스티커수집','포토타임','네트워킹','굿즈헌터','피드백요정','커피한잔','당충전','휴식중'];
     const CL=['#12b3a6','#e0872f','#c78bff','#21a17a','#e0533f','#1a8fe3','#f5c542','#6c5ce7','#4d8bff','#ffa8a8','#74c0fc','#8ce99a','#ffd166'];
     // zd: 좌/위쪽 좌석은 gx+gy가 소파보다 작아 가려짐 — 소파 depth 직후로 강제
-    const SEAT=[[z.cx-0.55,z.cy+1.55,z.cx+z.cy+1.5],[z.cx+0.55,z.cy+1.55,z.cx+z.cy+2.2],   // 북쪽 소파 2자리
-                [z.cx-3.05,z.cy+3.45,z.cx+z.cy+0.9],[z.cx-3.05,z.cy+4.55,z.cx+z.cy+1.6]];  // 서쪽 소파 2자리
+    const SEAT=[[lx-0.55,z.cy+1.55,lx+z.cy+1.5],[lx+0.55,z.cy+1.55,lx+z.cy+2.2],   // 북쪽 소파 2자리
+                [lx-3.05,z.cy+3.45,lx+z.cy+0.9],[lx-3.05,z.cy+4.55,lx+z.cy+1.6]];  // 서쪽 소파 2자리
     const PICK=[[0,1,3],[1,2],[0,2,3],[0,3],[1,2,3]][i];     // 존마다 2~3명 랜덤 조합
     return[
-    {type:'sofa',gx:z.cx,gy:z.cy+1.4,sk:0.5,color:c},{type:'sofa',gx:z.cx,gy:z.cy+6.6,sk:0.5,fl:1,color:c},   // gy축 대각선 쌍
-    {type:'sofa',gx:z.cx-3.2,gy:z.cy+4,sk:-0.5,color:c},{type:'sofa',gx:z.cx+3.2,gy:z.cy+4,sk:-0.5,fl:1,color:c}, // gx축 대각선 쌍
-    {type:'longtable',gx:z.cx,gy:z.cy+4,sk:0.5},
+    {type:'sofa',gx:lx,gy:z.cy+1.4,sk:0.5,color:c},{type:'sofa',gx:lx,gy:z.cy+6.6,sk:0.5,fl:1,color:c},   // gy축 대각선 쌍
+    {type:'sofa',gx:lx-3.2,gy:z.cy+4,sk:-0.5,color:c},{type:'sofa',gx:lx+3.2,gy:z.cy+4,sk:-0.5,fl:1,color:c}, // gx축 대각선 쌍
+    {type:'longtable',gx:lx,gy:z.cy+4,sk:0.5},
     ...PICK.map((sn,k)=>({type:'sitter',gx:SEAT[sn][0],gy:SEAT[sn][1],zd:SEAT[sn][2],color:CL[(i*3+k)%13],nick:NK[(i*3+k)%13]})),
   ];}),
   // 플레이그라운드 대형 팻말 — zd: 뒤벽(d≈86.4)보다 뒤에 그려지지 않도록 벽 위로
   {type:'billboard',gx:70,gy:PG.y0+0.4,text:'PLAYGROUND',sub:'미니게임 · 소소한 즐길거리',color:'#8b5cf6',w:280,fs:36,face:'ur',zd:87},
-  // 아이디어 월 (존 사이 가로 통로) + 스탠딩 테이블
-  {type:'board',gx:21,gy:19.6,act:'idea'},{type:'board',gx:39,gy:19.6,act:'idea'},
+  // 메시지 월 (T1/T4 사이 · T3/T5 사이 가로 통로) + 스탠딩 테이블
+  // 서쪽 외벽 대형 전광판(야구장 스크린) — notes: 메시지 월 문구 실시간 순환 (render.js billboardScreen)
+  // gx 2.2: 외벽(gx≈1)과 안 겹치게 한 칸 안쪽 / gy 18.3: 중앙 가로 통로(상단 카펫끝 14.9 ~ 하단 카펫시작 21.7) 중앙
+  // zd 24.3: 화면상 겹치는 서쪽 외벽 타일 최대 d(≈24)보다 위 — 벽에 안 가림
+  {type:'billboard',gx:2.2,gy:18.3,text:'MESSAGE WALL',sub:'💬 MESSAGE WALL LIVE · 방문객이 남긴 한마디',color:'#21a17a',w:340,h:150,fs:32,face:'ul',notes:1,zd:24.3},
+  {type:'board',gx:12.5,gy:18.3,act:'idea'},{type:'board',gx:47.5,gy:18.3,act:'idea'},
   {type:'table',gx:27,gy:21},{type:'table',gx:33,gy:21},
   // 카페 라운지 (우측 아래 대형 — 플레이그라운드 축소분 흡수)
   {type:'cafebar',gx:69,gy:26.5},
@@ -107,7 +111,7 @@ const DECOR=[
 const HANGOUTS=[[67.5,42],[72,42],[69.5,42.2],[26,25.2],[34,25.2],[26,29.2],[34,29.2],
   [21.3,21.2],[38.7,21.2],[69.5,40],[77.8,40.2],
   [67,7.8],[72.5,7.8],[69.7,25.2],[65.8,30.8],[73.8,34.8],[77.8,30.8],
-  ...ZONES.map(z=>[z.cx,z.cy+5.3])]; // 존 중앙 라운지
+  ...ZONES.map(z=>[z.cx-2,z.cy+5.3])]; // 존 중앙 라운지 (2칸 왼쪽 이동 반영)
 
 /* 정적 스크린 좌표 캐시 — 매 프레임 w2s 재계산 방지 */
 for(const b of BOOTHS){const s=w2s(b.gx,b.gy);b.sx=s.x;b.sy=s.y;}

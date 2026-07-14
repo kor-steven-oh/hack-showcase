@@ -68,6 +68,11 @@
       <div class="stat"><div class="n">5</div><div class="l">트랙 · 섹션</div></div>
       <div class="stat"><div class="n">∞</div><div class="l">둘러보기</div></div>
     </div>
+    <div class="nick-form">
+      <label for="nickIn">닉네임</label>
+      <input id="nickIn" type="text" maxlength="12" autocomplete="off" spellcheck="false" />
+      <button class="nick-refresh" id="nickRefresh" type="button" aria-label="다른 닉네임 추천">↻</button>
+    </div>
     <button class="enter-btn" id="enterBtn">캠퍼스 입장하기</button>
     <div class="intro-keys">
       <span><kbd>WASD</kbd>/<kbd>화살표</kbd> 이동</span><span><kbd>Space</kbd>/클릭 관람</span>
@@ -82,5 +87,6 @@
 <script src="js/world.js"></script>
 <script src="js/render.js"></script>
 <script src="js/main.js"></script>
+<script src="js/net.js"></script>
 </body>
 </html>

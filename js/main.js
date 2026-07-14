@@ -25,7 +25,10 @@ for(let i=0;i<20;i++){
     speed:2.1+Math.random()*1.2,state:'walk',timer:0,phase:Math.random()*7,moving:true,face:1,isPlayer:false,tx:0,ty:0};
   npcTarget(n); npcs.push(n);
 }
-const CHARS=[player,...npcs]; // 렌더 depth 병합용 — 멤버 고정, 매 프레임 d만 갱신
+/* 로봇청소기 — 통로를 쉼 없이 순회하며 청소. trail: 지나온 자리 반짝 자국 */
+const vac={gx:HALL_W/2+3,gy:HALL_D-4,isVac:true,speed:1.4,tx:0,ty:0,trail:[],trailT:0,face:1,moving:true,phase:0};
+{const p=randAisle();vac.tx=p.x;vac.ty=p.y;}
+const CHARS=[player,...npcs,vac]; // 렌더 depth 병합용 — 멤버 고정, 매 프레임 d만 갱신
 
 /* ---------- 입력 ---------- */
 const keys={};
@@ -87,6 +90,19 @@ function update(dt,t){
         n.moving=true;n.phase+=dt*10;if(Math.abs(dx)>0.01)n.face=dx>0?1:-1;}
     }else{n.timer-=dt;if(n.timer<=0)npcTarget(n);}
   }
+  { // 로봇청소기 — NPC와 달리 멈추지 않고 통로 웨이포인트 연속 순회
+    const dx=vac.tx-vac.gx,dy=vac.ty-vac.gy,dd=Math.hypot(dx,dy);
+    const retarget=()=>{const p=randAisle();vac.tx=clamp(p.x,1.8,HALL_W-2.8);vac.ty=clamp(p.y,1.8,HALL_D-2.8);};
+    if(dd<0.3)retarget();
+    else{const sp=vac.speed*dt,bx=vac.gx,by=vac.gy;moveEnt(vac,dx/dd*sp,dy/dd*sp);
+      if(Math.abs(vac.gx-bx)<1e-4&&Math.abs(vac.gy-by)<1e-4)retarget(); // 벽에 막히면 새 목적지
+      if(Math.abs(dx)>0.01)vac.face=dx>0?1:-1;}
+    vac.trailT-=dt;
+    if(vac.trailT<=0){vac.trailT=0.16;vac.trail.push({x:vac.gx,y:vac.gy,a:0.5});}
+    for(const p of vac.trail)p.a-=dt*0.22;
+    while(vac.trail.length&&vac.trail[0].a<=0)vac.trail.shift();
+  }
+  if(typeof NET!=='undefined')NET.tick(dt); // 원격 유저 보간 (net.js는 main.js 뒤에 로드)
 
   activeBooth=null;let best=1.5;
   for(const b of BOOTHS){const dd=dist(player.gx,player.gy,b.view.x,b.view.y);if(dd<best){best=dd;activeBooth=b;}}
@@ -103,7 +119,7 @@ function update(dt,t){
     else if(Math.abs(player.gx-PLAZA.x)<=8&&Math.abs(player.gy-PLAZA.y)<=10.5){lbl='중앙 광장 · HELLO AI';col='#4d8bff';}
     else if(player.gx>=PG.x0-0.5&&player.gx<=PG.x1+0.5&&player.gy>=PG.y0-1&&player.gy<=PG.y1+1){lbl='플레이그라운드 · Playground';col='#a78bfa';}
     else if(player.gx>=61.5&&player.gx<=80&&player.gy>=20.5&&player.gy<=42.5){lbl='카페 라운지 · Cafe Lounge';col='#e0872f';}
-    else if(player.gy>=17.5&&player.gy<=23.5&&player.gx>=8&&player.gx<=56){lbl='아이디어 월 · Idea Wall';col='#37d67a';}}
+    else if(player.gy>=17.5&&player.gy<=23.5&&player.gx>=8&&player.gx<=56){lbl='메시지 월 · Message Wall';col='#37d67a';}}
   if(zoneTxt.textContent!==lbl){ // DOM 쓰기는 변경 시에만 — 매 프레임 스타일 무효화 방지
     zoneTxt.textContent=lbl; zonePill.style.color=col;
     const zd=zonePill.querySelector('.zd'); if(zd){zd.style.background=col;zd.style.boxShadow='0 0 10px '+col;}
@@ -156,7 +172,7 @@ function closeModal(){modalOpen=false;gameOpen=false;if(gameTid){clearTimeout(ga
 modalBack.addEventListener('click',e=>{if(e.target===modalBack)closeModal();});
 
 /* ---------- 상호작용 스팟 모달 (아이디어 월 · 안내) ---------- */
-const ACT_BTN={game:'▶ 게임하기',idea:'✏ 아이디어',info:'ℹ 안내'};
+const ACT_BTN={game:'▶ 게임하기',idea:'✏ 메시지',info:'ℹ 안내'};
 function spotHead(acc,tag,title,sub){
   return `<div class="m-head">
     <div class="accent-line" style="background:linear-gradient(90deg,${acc},transparent)"></div>
@@ -168,8 +184,7 @@ function spotHead(acc,tag,title,sub){
 }
 function openSpotModal(html){modalOpen=true;modal.innerHTML=html;modalBack.classList.add('open');document.getElementById('mClose').onclick=closeModal;}
 
-/* 아이디어 월 — 노트는 localStorage 보관 */
-// TODO(backend): 노트 서버 동기화 — 예) socket.emit('idea',{text})
+/* 아이디어 월 — 서버 접속 시 서버(idea-notes.json)가 원본, localStorage는 오프라인 폴백 */
 let ideaNotes=null;
 try{ideaNotes=JSON.parse(localStorage.getItem('ideaNotes'));}catch(e){}
 if(!Array.isArray(ideaNotes)||!ideaNotes.length)
@@ -178,7 +193,7 @@ function saveNotes(){try{localStorage.setItem('ideaNotes',JSON.stringify(ideaNot
 const NOTE_C=['#ffd166','#8ce99a','#74c0fc','#ffa8a8','#e599f7'];
 function openIdea(){
   const acc='#21a17a';
-  openSpotModal(spotHead(acc,'IDEA WALL · 아이디어 월','아이디어 월','해커톤에서 떠오른 생각, 응원 한마디를 붙여보세요')+
+  openSpotModal(spotHead(acc,'MESSAGE WALL · 메시지 월','메시지 월','해커톤에서 떠오른 생각, 응원 한마디를 붙여보세요')+
     `<div class="m-body">
       <div class="note-form"><input id="noteIn" maxlength="80" placeholder="한 줄 남기기…"/><button id="noteAdd">붙이기</button></div>
       <div class="note-grid" id="noteGrid"></div>
@@ -189,9 +204,11 @@ function openIdea(){
     el.style.background=NOTE_C[i%5];el.style.transform='rotate('+((i%5)-2)*1.6+'deg)';
     el.textContent=n;grid.appendChild(el);});
     grid.scrollTop=grid.scrollHeight;};
-  const add=()=>{const v=inp.value.trim();if(!v)return;ideaNotes.push(v);saveNotes();inp.value='';paint();};
+  const add=()=>{const v=inp.value.trim();if(!v)return;ideaNotes.push(v);saveNotes();inp.value='';paint();
+    if(typeof NET!=='undefined')NET.idea(v);};
   document.getElementById('noteAdd').onclick=add;
   inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();add();}});
+  window._ideaPaint=paint; // net.js가 원격 노트 수신 시 호출
   paint();
 }
 
@@ -207,6 +224,22 @@ function openInfo(){
 /* ---------- 미니게임: 반응속도 ---------- */
 // ponytail: 게임 종류가 늘면 game 키별 open 함수 라우팅으로 확장
 let gameOpen=false,gameSt='idle',gameTid=0,gameT0=0,gameBest=null;
+let gameRanks=[]; // [{nick,ms}] — 온라인이면 서버 순위(welcome/ranks), 오프라인이면 내 기록만
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function paintRanks(){
+  const el=document.getElementById('rankList');if(!el)return;
+  el.innerHTML=gameRanks.length?gameRanks.map((r,i)=>
+    `<div class="rank-row${r.nick===player.nick?' me':''}"><span class="rk">${i+1}</span><span class="rnick">${esc(r.nick)}</span><span class="rms">${r.ms}ms</span></div>`).join('')
+    :'<div class="rank-row">아직 기록 없음</div>';
+}
+function submitScore(ms){
+  if(typeof NET!=='undefined'&&NET.score(ms))return; // 서버가 ranks 브로드캐스트로 갱신
+  const nick=player.nick||'게스트',i=gameRanks.findIndex(r=>r.nick===nick); // 오프라인 폴백
+  if(i>=0){if(ms>=gameRanks[i].ms)return;gameRanks[i].ms=ms;}
+  else gameRanks.push({nick,ms});
+  gameRanks.sort((a,b)=>a.ms-b.ms);gameRanks=gameRanks.slice(0,10);
+  paintRanks();
+}
 function openGame(){
   modalOpen=true;gameOpen=true;gameSt='idle';
   const acc='#21a17a';
@@ -218,11 +251,15 @@ function openGame(){
       <div class="m-title">반응속도</div>
       <div class="m-team">초록색으로 바뀌는 순간, 최대한 빨리 Space 또는 클릭!</div>
     </div>
-    <div class="m-body"><div class="game-pad" id="gamePad"></div></div>`;
+    <div class="m-body"><div class="game-wrap">
+      <div class="game-pad" id="gamePad"></div>
+      <div class="rank-panel"><div class="rank-title">🏆 랭킹 TOP 10</div><div id="rankList"></div></div>
+    </div></div>`;
   modalBack.classList.add('open');
   document.getElementById('mClose').onclick=closeModal;
   document.getElementById('gamePad').addEventListener('pointerdown',e=>{e.preventDefault();gameTap();});
   setPad('idle','반응속도 테스트','Space 또는 클릭으로 시작');
+  paintRanks();
 }
 function setPad(cls,big,small){
   const p=document.getElementById('gamePad');if(!p)return;
@@ -240,6 +277,7 @@ function gameTap(){
   }else if(gameSt==='go'){
     const ms=Math.round(performance.now()-gameT0);
     if(gameBest===null||ms<gameBest)gameBest=ms;
+    submitScore(ms);
     gameSt='result';setPad('result',ms+'ms',gradeMs(ms)+' · 최고 기록 '+gameBest+'ms · Space로 재도전');
   }
 }
@@ -255,11 +293,13 @@ function addChat(text,opt){
   if(opt.who&&!opt.self&&!opt.sys){const w=document.createElement('div');w.className='who';w.textContent=opt.who;el.appendChild(w);}
   const b=document.createElement('div');b.className='bub';b.textContent=text;el.appendChild(b);
   chatBody.appendChild(el);chatBody.scrollTop=chatBody.scrollHeight;
+  while(chatBody.childElementCount>200)chatBody.firstElementChild.remove(); // DOM 무한 누적 방지
 }
 function sendChat(){
   const v=chatText.value.trim();if(!v)return;
   addChat(v,{self:true});chatText.value='';
-  // TODO(backend): 서버로 전송 — 예) socket.emit('chat',{text:v})
+  player.say=v;player.sayUntil=performance.now()/1000+6;player._sayLines=null; // 캐릭터 머리 위 말풍선 6초
+  if(typeof NET!=='undefined')NET.chat(v);
 }
 chatSend.addEventListener('click',sendChat);
 chatText.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChat();}else if(e.key==='Escape'){chatText.blur();}});
@@ -268,4 +308,17 @@ addChat('전체 채팅에 입장했어요. 아직 서버 연결 전이라 내가
 addChat('부스 어디부터 도실 거예요?',{who:'김도현'});
 addChat('저는 T1 설계·EDA 부스부터요 👀',{who:'이서연'});
 
-document.getElementById('enterBtn').onclick=()=>{started=true;const intro=document.getElementById('intro');intro.style.opacity='0';setTimeout(()=>intro.style.display='none',500);};
+/* 입장 — 닉네임 입력(자동 추천 기본값) 후 멀티유저 접속 */
+const nickIn=document.getElementById('nickIn');
+const suggestNick=()=>NICKS[(Math.random()*NICKS.length)|0]+((10+Math.random()*90)|0);
+if(nickIn){
+  nickIn.value=suggestNick();
+  nickIn.addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('enterBtn').click();});
+  const rf=document.getElementById('nickRefresh');
+  if(rf)rf.onclick=()=>{nickIn.value=suggestNick();nickIn.focus();};
+}
+document.getElementById('enterBtn').onclick=()=>{
+  player.nick=((nickIn&&nickIn.value.trim())||suggestNick()).slice(0,12);
+  if(typeof NET!=='undefined')NET.connect(player.nick);
+  started=true;const intro=document.getElementById('intro');intro.style.opacity='0';setTimeout(()=>intro.style.display='none',500);
+};
