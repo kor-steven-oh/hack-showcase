@@ -6,12 +6,15 @@ const NPC_COLORS=['#12b3a6','#6c5ce7','#e0872f','#21a17a','#e0533f','#1a8fe3','#
 const NICKS=['새벽코딩','민초단','커밋요정','도넛왕','텐서보이','디버그맨','밤샘장인','반도체진심',
   '웨이퍼러버','치킨쿠폰','알고리듬','폰노이만','초코라떼','피카부','스탠드업','자율주행러',
   '커피수혈','조립왕','핫식스','린턴하는중'];
-const AY=[5,14,20,24,37], AX=[3,21,30,39,56,70];
+const AY=[5,14,22,26,41], AX=[3,21,30,39,56,70];
 function randAisle(){return Math.random()<0.5
   ? {x:2+Math.random()*(HALL_W-4), y:AY[(Math.random()*AY.length)|0]}
   : {x:AX[(Math.random()*AX.length)|0], y:2+Math.random()*(HALL_D-4)};}
 function npcTarget(n){
-  if(Math.random()<0.6){const b=BOOTHS[(Math.random()*BOOTHS.length)|0];n.tx=b.view.x+(Math.random()-.5)*0.6;n.ty=b.view.y+(Math.random()-.5)*0.4;}
+  const r=Math.random();
+  if(r<0.5){const b=BOOTHS[(Math.random()*BOOTHS.length)|0];n.tx=b.view.x+(Math.random()-.5)*0.6;n.ty=b.view.y+(Math.random()-.5)*0.4;}
+  else if(r<0.75){const h=HANGOUTS[(Math.random()*HANGOUTS.length)|0];
+    n.tx=clamp(h[0]+(Math.random()-.5)*0.8,1.6,HALL_W-2.6);n.ty=clamp(h[1]+(Math.random()-.5)*0.5,1.6,HALL_D-2.6);}
   else{const p=randAisle();n.tx=clamp(p.x,1.6,HALL_W-2.6);n.ty=clamp(p.y,1.6,HALL_D-2.6);}
   n.state='walk';
 }
@@ -27,20 +30,28 @@ const CHARS=[player,...npcs]; // 렌더 depth 병합용 — 멤버 고정, 매 �
 /* ---------- 입력 ---------- */
 const keys={};
 const K_UP=['w','ArrowUp'],K_DOWN=['s','ArrowDown'],K_LEFT=['a','ArrowLeft'],K_RIGHT=['d','ArrowRight'];
-let started=false,activeBooth=null,activeArcade=null,modalOpen=false;
+let started=false,activeBooth=null,activeSpot=null,modalOpen=false;
+/* 상호작용 스팟(act) 라우팅 — DECOR의 act 키와 1:1 */
+function actSpot(){
+  if(!activeSpot)return;
+  const a=activeSpot.act;
+  if(a==='game')openGame();
+  else if(a==='idea')openIdea();
+  else if(a==='info')openInfo();
+}
+function interact(){if(activeBooth)openModal(activeBooth.ex);else actSpot();}
 addEventListener('keydown',e=>{
   if(e.target&&(e.target.tagName==='INPUT'||e.target.isContentEditable))return;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();
   const k=e.key.length===1?e.key.toLowerCase():e.key; keys[k]=true;
   if(k===' '&&started&&!e.repeat){
     if(gameOpen)gameTap();
-    else if(!modalOpen&&activeBooth)openModal(activeBooth.ex);
-    else if(!modalOpen&&activeArcade)openGame();
+    else if(!modalOpen)interact();
   }
   if(k==='Escape'&&modalOpen)closeModal();
 });
 addEventListener('keyup',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;keys[k]=false;});
-cv.addEventListener('click',()=>{if(started&&!modalOpen){if(activeBooth)openModal(activeBooth.ex);else if(activeArcade)openGame();}});
+cv.addEventListener('click',()=>{if(started&&!modalOpen)interact();});
 const down=l=>l.some(k=>keys[k]);
 
 let padVec={x:0,y:0}, actBtn=null;
@@ -53,7 +64,7 @@ let padVec={x:0,y:0}, actBtn=null;
     ['pointerup','pointerleave','pointercancel'].forEach(ev=>btn.addEventListener(ev,off));
   });
   actBtn=document.getElementById('actBtn');
-  actBtn.addEventListener('pointerdown',e=>{e.preventDefault();if(started&&!modalOpen){if(activeBooth)openModal(activeBooth.ex);else if(activeArcade)openGame();}});
+  actBtn.addEventListener('pointerdown',e=>{e.preventDefault();if(started&&!modalOpen)interact();});
 })();
 
 /* ---------- 업데이트 ---------- */
@@ -79,22 +90,27 @@ function update(dt,t){
 
   activeBooth=null;let best=1.5;
   for(const b of BOOTHS){const dd=dist(player.gx,player.gy,b.view.x,b.view.y);if(dd<best){best=dd;activeBooth=b;}}
-  activeArcade=null;
-  if(!activeBooth){let ab=1.8;
-    for(const d of DECOR){if(!d.game)continue;const dd=dist(player.gx,player.gy,d.gx,d.gy+0.8);if(dd<ab){ab=dd;activeArcade=d;}}}
+  activeSpot=null;
+  if(!activeBooth){let ab=1.9;
+    for(const d of DECOR){if(!d.act)continue;const dd=dist(player.gx,player.gy,d.gx,d.gy+0.8);if(dd<ab){ab=dd;activeSpot=d;}}}
   for(const b of BOOTHS)b.glow=lerp(b.glow,(b===activeBooth?1:0.28),0.18);
 
   let lbl='이동 통로',col='#4d8bff';
   if(player.gy>=HALL_D-3){lbl='입구 · Entrance';col='#4d8bff';}
   else{let bi=-1;ZONES.forEach((z,i)=>{
-      if(Math.abs(player.gx-z.cx)<=BOOTH_DX+3.5 && player.gy>=z.cy-2 && player.gy<=z.cy+BOOTH_DY+3) bi=i;});
+      if(Math.abs(player.gx-z.cx)<=BOOTH_DX+3.5 && player.gy>=z.cy-5 && player.gy<=z.cy+BOOTH_DY+5.5) bi=i;});
     if(bi>=0){lbl=TRACKS[bi].code+' · '+TRACKS[bi].name;col=TRACKS[bi].accent;}
-    else if(Math.abs(player.gx-PLAZA.x)<=8&&Math.abs(player.gy-PLAZA.y)<=7.5){lbl='중앙 광장 · HELLO AI';col='#4d8bff';}
-    else if(player.gx>=PG.x0-0.5&&player.gx<=PG.x1+0.5&&player.gy>=PG.y0-1&&player.gy<=PG.y1+1){lbl='플레이그라운드 · Playground';col='#a78bfa';}}
-  zoneTxt.textContent=lbl; zonePill.style.color=col;
-  const zd=zonePill.querySelector('.zd'); if(zd){zd.style.background=col;zd.style.boxShadow='0 0 10px '+col;}
-  if(actBtn){actBtn.classList.toggle('on',!!(started&&!modalOpen&&(activeBooth||activeArcade)));
-    actBtn.textContent=activeArcade?'▶ 게임하기':'▶ 관람하기';}
+    else if(Math.abs(player.gx-PLAZA.x)<=8&&Math.abs(player.gy-PLAZA.y)<=10.5){lbl='중앙 광장 · HELLO AI';col='#4d8bff';}
+    else if(player.gx>=PG.x0-0.5&&player.gx<=PG.x1+0.5&&player.gy>=PG.y0-1&&player.gy<=PG.y1+1){lbl='플레이그라운드 · Playground';col='#a78bfa';}
+    else if(player.gx>=61.5&&player.gx<=80&&player.gy>=20.5&&player.gy<=42.5){lbl='카페 라운지 · Cafe Lounge';col='#e0872f';}
+    else if(player.gy>=17.5&&player.gy<=23.5&&player.gx>=8&&player.gx<=56){lbl='아이디어 월 · Idea Wall';col='#37d67a';}}
+  if(zoneTxt.textContent!==lbl){ // DOM 쓰기는 변경 시에만 — 매 프레임 스타일 무효화 방지
+    zoneTxt.textContent=lbl; zonePill.style.color=col;
+    const zd=zonePill.querySelector('.zd'); if(zd){zd.style.background=col;zd.style.boxShadow='0 0 10px '+col;}
+  }
+  if(actBtn){actBtn.classList.toggle('on',!!(started&&!modalOpen&&(activeBooth||activeSpot)));
+    const at=activeBooth?'▶ 관람하기':(activeSpot?ACT_BTN[activeSpot.act]:'▶ 관람하기');
+    if(actBtn.textContent!==at)actBtn.textContent=at;}
 
   const ps=w2s(player.gx,player.gy);player.sx=ps.x;player.sy=ps.y;
   const tx=W/2-ps.x,ty=H/2-40-ps.y;
@@ -138,6 +154,55 @@ function openModal(ex){
 }
 function closeModal(){modalOpen=false;gameOpen=false;if(gameTid){clearTimeout(gameTid);gameTid=0;}modalBack.classList.remove('open');}
 modalBack.addEventListener('click',e=>{if(e.target===modalBack)closeModal();});
+
+/* ---------- 상호작용 스팟 모달 (아이디어 월 · 안내) ---------- */
+const ACT_BTN={game:'▶ 게임하기',idea:'✏ 아이디어',info:'ℹ 안내'};
+function spotHead(acc,tag,title,sub){
+  return `<div class="m-head">
+    <div class="accent-line" style="background:linear-gradient(90deg,${acc},transparent)"></div>
+    <button class="m-close" id="mClose">✕</button>
+    <span class="m-track" style="color:${acc};background:${hexA(acc,0.12)};border:1px solid ${hexA(acc,0.35)}">${tag}</span>
+    <div class="m-title">${title}</div>
+    <div class="m-team">${sub}</div>
+  </div>`;
+}
+function openSpotModal(html){modalOpen=true;modal.innerHTML=html;modalBack.classList.add('open');document.getElementById('mClose').onclick=closeModal;}
+
+/* 아이디어 월 — 노트는 localStorage 보관 */
+// TODO(backend): 노트 서버 동기화 — 예) socket.emit('idea',{text})
+let ideaNotes=null;
+try{ideaNotes=JSON.parse(localStorage.getItem('ideaNotes'));}catch(e){}
+if(!Array.isArray(ideaNotes)||!ideaNotes.length)
+  ideaNotes=['부스 동선 너무 좋아요 👍','T5 코드리뷰 부스터 실무에 쓰고 싶다','내년엔 우리 팀도 출전!'];
+function saveNotes(){try{localStorage.setItem('ideaNotes',JSON.stringify(ideaNotes.slice(-60)));}catch(e){}}
+const NOTE_C=['#ffd166','#8ce99a','#74c0fc','#ffa8a8','#e599f7'];
+function openIdea(){
+  const acc='#21a17a';
+  openSpotModal(spotHead(acc,'IDEA WALL · 아이디어 월','아이디어 월','해커톤에서 떠오른 생각, 응원 한마디를 붙여보세요')+
+    `<div class="m-body">
+      <div class="note-form"><input id="noteIn" maxlength="80" placeholder="한 줄 남기기…"/><button id="noteAdd">붙이기</button></div>
+      <div class="note-grid" id="noteGrid"></div>
+    </div>`);
+  const grid=document.getElementById('noteGrid'),inp=document.getElementById('noteIn');
+  const paint=()=>{grid.innerHTML='';ideaNotes.forEach((n,i)=>{
+    const el=document.createElement('div');el.className='note';
+    el.style.background=NOTE_C[i%5];el.style.transform='rotate('+((i%5)-2)*1.6+'deg)';
+    el.textContent=n;grid.appendChild(el);});
+    grid.scrollTop=grid.scrollHeight;};
+  const add=()=>{const v=inp.value.trim();if(!v)return;ideaNotes.push(v);saveNotes();inp.value='';paint();};
+  document.getElementById('noteAdd').onclick=add;
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();add();}});
+  paint();
+}
+
+function openInfo(){
+  const acc='#3d7bff';
+  openSpotModal(spotHead(acc,'INFORMATION · 안내','전시관 안내','5개 트랙 20개 부스, 광장과 플레이그라운드까지 천천히 둘러보세요')+
+    `<div class="m-body">
+      <div class="m-summary">이동 <b>WASD / 방향키</b> · 관람 <b>Space / 클릭</b> · 미니게임은 우측 플레이그라운드, 휴식은 입구 왼쪽 카페 라운지에서.</div>
+      <div class="lib-list" style="margin-top:12px">${TRACKS.map(tr=>`<div class="lib-row"><div class="lib-term" style="color:${tr.accent}">${tr.code}</div><div class="lib-desc"><b>${tr.name}</b> — ${tr.tagline}</div></div>`).join('')}</div>
+    </div>`);
+}
 
 /* ---------- 미니게임: 반응속도 ---------- */
 // ponytail: 게임 종류가 늘면 game 키별 open 함수 라우팅으로 확장
