@@ -140,12 +140,15 @@ function update(dt,t){
   if(typeof NET!=='undefined')NET.tick(dt); // 원격 유저 보간 (net.js는 main.js 뒤에 로드)
 
   activeBooth=null;let best=1.5;
-  for(const b of BOOTHS){const dd=dist(player.gx,player.gy,b.view.x,b.view.y);if(dd<best){best=dd;activeBooth=b;}}
-  activeSpot=null;
-  if(!activeBooth){let ab=1.9;
-    for(const d of DECOR){if(!d.act)continue;const dd=dist(player.gx,player.gy,d.gx,d.gy+0.8);if(dd<ab){ab=dd;activeSpot=d;}}
-    for(const g of guides){const gd=dist(player.gx,player.gy,g.gx,g.gy);
-      if(gd<ab){ab=gd;activeSpot=g;}}} // 도슨트도 안내 스팟 — actSpot의 'info' 라우팅 재사용
+  for(const b of BOOTHS){ // 부스 풋프린트 사각형까지의 거리 — 앞뒤좌우 어느 쪽이든 활성. 앞(+gy)은 관람 지점(gy+1.9)까지 풋프린트 취급
+    const dx=Math.max(Math.abs(player.gx-b.gx)-1.2,0);
+    const dyv=player.gy-b.gy,dy=Math.max(dyv<0?-dyv-0.5:dyv-1.9,0);
+    const dd=Math.hypot(dx,dy);if(dd<best){best=dd;activeBooth=b;}}
+  activeSpot=null;let ab=1.9;
+  for(const d of DECOR){if(!d.act)continue;const dd=dist(player.gx,player.gy,d.gx,d.gy+0.8);if(dd<ab){ab=dd;activeSpot=d;}}
+  for(const g of guides){const gd=dist(player.gx,player.gy,g.gx,g.gy);
+    if(gd<ab){ab=gd;activeSpot=g;}} // 도슨트도 안내 스팟 — actSpot의 'info' 라우팅 재사용
+  if(activeBooth&&activeSpot){if(best<=ab)activeSpot=null;else activeBooth=null;} // 겹치면 더 가까운 쪽 — 부스가 도슨트/스팟을 가리지 않게
   for(const b of BOOTHS)b.glow=lerp(b.glow,(b===activeBooth?1:0.28),0.18);
 
   let lbl='이동 통로',col='#4d8bff';
@@ -203,9 +206,15 @@ function openModal(ex){
         <div><div class="m-sec-title">팀 구성원</div><div class="members">${members}</div></div>
       </div>
     </div>`;
-  modalBack.classList.add('open');document.getElementById('mClose').onclick=closeModal;
+  showModalBack();document.getElementById('mClose').onclick=closeModal;
 }
-function closeModal(){modalOpen=false;gameOpen=false;if(gameTid){clearTimeout(gameTid);gameTid=0;}modalBack.classList.remove('open');}
+let closeTid=0;
+function showModalBack(){clearTimeout(closeTid);modalBack.classList.remove('closing');modalBack.classList.add('open');}
+function closeModal(){modalOpen=false;gameOpen=false;if(gameTid){clearTimeout(gameTid);gameTid=0;}
+  modalBack.classList.add('closing'); // 실제 제거는 animationend, 타이머는 폴백(스로틀 탭 등)
+  clearTimeout(closeTid);closeTid=setTimeout(()=>modalBack.classList.remove('open','closing'),400);}
+modalBack.addEventListener('animationend',()=>{
+  if(modalBack.classList.contains('closing')){clearTimeout(closeTid);modalBack.classList.remove('open','closing');}});
 modalBack.addEventListener('click',e=>{if(e.target===modalBack)closeModal();});
 
 /* ---------- 상호작용 스팟 모달 (아이디어 월 · 안내) ---------- */
@@ -219,14 +228,18 @@ function spotHead(acc,tag,title,sub){
     <div class="m-team">${sub}</div>
   </div>`;
 }
-function openSpotModal(html){modalOpen=true;modal.innerHTML=html;modalBack.classList.add('open');document.getElementById('mClose').onclick=closeModal;}
+function openSpotModal(html){modalOpen=true;modal.innerHTML=html;showModalBack();document.getElementById('mClose').onclick=closeModal;}
 
 /* 아이디어 월 — 서버 접속 시 서버(idea-notes.json)가 원본, localStorage는 오프라인 폴백 */
 let ideaNotes=null;
 try{ideaNotes=JSON.parse(localStorage.getItem('ideaNotes'));}catch(e){}
 if(!Array.isArray(ideaNotes)||!ideaNotes.length)
   ideaNotes=['부스 동선 너무 좋아요 👍','T5 코드리뷰 부스터 실무에 쓰고 싶다','내년엔 우리 팀도 출전!'];
-function saveNotes(){try{localStorage.setItem('ideaNotes',JSON.stringify(ideaNotes.slice(-60)));}catch(e){}}
+let saveNotesTid=0; // localStorage.setItem은 동기 I/O — 수신 러시 때 프레임 블록 방지용 디바운스
+function flushNotes(){clearTimeout(saveNotesTid);saveNotesTid=0;
+  try{localStorage.setItem('ideaNotes',JSON.stringify(ideaNotes.slice(-60)));}catch(e){}}
+function saveNotes(){clearTimeout(saveNotesTid);saveNotesTid=setTimeout(flushNotes,400);}
+addEventListener('pagehide',()=>{if(saveNotesTid)flushNotes();}); // 탭 닫기/새로고침 직전 유실 방지
 const NOTE_C=['#ffd166','#8ce99a','#74c0fc','#ffa8a8','#e599f7'];
 function openIdea(){
   const acc='#21a17a';
@@ -292,7 +305,7 @@ function openGame(){
       <div class="game-pad" id="gamePad"></div>
       <div class="rank-panel"><div class="rank-title">🏆 랭킹 TOP 10</div><div id="rankList"></div></div>
     </div></div>`;
-  modalBack.classList.add('open');
+  showModalBack();
   document.getElementById('mClose').onclick=closeModal;
   document.getElementById('gamePad').addEventListener('pointerdown',e=>{e.preventDefault();gameTap();});
   setPad('idle','반응속도 테스트','Space 또는 클릭으로 시작');
@@ -305,6 +318,7 @@ function setPad(cls,big,small){
 }
 function gradeMs(ms){return ms<180?'⚡ 초인적':ms<250?'🔥 빠름':ms<350?'👍 평균':'🐢 느긋하시네요';}
 function gameTap(){
+  if(!gameOpen)return; // 모달 닫힘 애니메이션 중 잔여 탭 — 유령 타이머 예약 방지
   if(gameSt==='idle'||gameSt==='result'){
     gameSt='wait';setPad('wait','기다리세요…','초록색이 되면 바로!');
     gameTid=setTimeout(()=>{gameTid=0;gameSt='go';gameT0=performance.now();setPad('go','지금!','Space / 클릭');},1000+Math.random()*2500);
@@ -329,8 +343,9 @@ function addChat(text,opt){
   el.className='msg'+(opt.self?' me':'')+(opt.sys?' sys':'');
   if(opt.who&&!opt.self&&!opt.sys){const w=document.createElement('div');w.className='who';w.textContent=opt.who;el.appendChild(w);}
   const b=document.createElement('div');b.className='bub';b.textContent=text;el.appendChild(b);
-  chatBody.appendChild(el);chatBody.scrollTop=chatBody.scrollHeight;
+  chatBody.appendChild(el);
   while(chatBody.childElementCount>200)chatBody.firstElementChild.remove(); // DOM 무한 누적 방지
+  if(!chat.classList.contains('collapsed'))chatBody.scrollTop=chatBody.scrollHeight; // 접힘(display:none) 중엔 강제 레이아웃 스킵
 }
 function sendChat(){
   const v=chatText.value.trim();if(!v)return;
@@ -340,7 +355,9 @@ function sendChat(){
 }
 chatSend.addEventListener('click',sendChat);
 chatText.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChat();}else if(e.key==='Escape'){chatText.blur();}});
-chatHead.addEventListener('click',()=>chat.classList.toggle('collapsed'));
+chatHead.addEventListener('click',()=>{
+  if(!chat.classList.toggle('collapsed'))chatBody.scrollTop=chatBody.scrollHeight; // 펼칠 때 최신 메시지로
+});
 addChat('전체 채팅에 입장했어요. 아직 서버 연결 전이라 내가 보낸 메시지는 내 화면에만 표시됩니다.',{sys:true});
 addChat('부스 어디부터 도실 거예요?',{who:'김도현'});
 addChat('저는 T1 설계·EDA 부스부터요 👀',{who:'이서연'});
