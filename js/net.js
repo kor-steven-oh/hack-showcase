@@ -3,12 +3,16 @@ const NET=(()=>{
   let ws=null,timer=0;
   const remotes=new Map(); // id → drawChar 호환 원격 유저 엔티티
   const chatCount=document.getElementById('chatCount');
-  function rebuild(){ // CHARS 재구성은 입퇴장 때만 — 렌더 depth 병합 루프는 그대로
-    CHARS.length=0;CHARS.push(player,...npcs,vac,...remotes.values());
-    if(chatCount)chatCount.textContent='접속 '+(remotes.size+1)+'명';
+  let rebuildPending=false;
+  function rebuild(){ // 동시 입퇴장 러시는 다음 프레임에 한 번만 반영
+    if(rebuildPending)return;rebuildPending=true;
+    requestAnimationFrame(()=>{
+      rebuildPending=false;CHARS.length=0;CHARS.push(player,...npcs,vac,...remotes.values());
+      if(chatCount)chatCount.textContent='접속 '+(remotes.size+1)+'명';
+    });
   }
   function add(u){remotes.set(u.id,{gx:u.x,gy:u.y,buf:[],nick:u.nick,color:u.color||'#4d8bff',
-    head:P.npcHead,moving:false,face:1,phase:Math.random()*7,isPlayer:false,d:0});}
+    head:P.npcHead,moving:false,face:1,phase:Math.random()*7,isPlayer:false,isRemote:true,d:0});}
 
   function connect(nick){
     if(!/^https?:$/.test(location.protocol))return;
@@ -32,19 +36,20 @@ const NET=(()=>{
       else if(m.t==='leave'){const r=remotes.get(m.id);
         if(r){remotes.delete(m.id);rebuild();addChat(r.nick+' 님이 퇴장했어요',{sys:true});}}
       else if(m.t==='snap'){
-        let now=performance.now(); // 스톨 후 몰려온 버스트 — 수신 시각이 겹치면 서버 10Hz 간격으로 복원
-        if(now-lastSnapAt<50)now=lastSnapAt+100;
+        let now=performance.now(); // 스톨 후 몰려온 버스트 — 수신 시각이 겹치면 서버 5Hz 간격으로 복원
+        if(now-lastSnapAt<80)now=lastSnapAt+SNAP_INTERVAL;
         lastSnapAt=now;
         for(const[id,x,y,face,mv]of m.users){const r=remotes.get(id);
         if(!r)continue;
         const lb=r.buf[r.buf.length-1];
-        if(lb&&now-lb.t>300){ // 정지했다 재이동 — 오래된 스냅샷 버리고 현재 표시 위치에서 새 위치로 글라이드
+        if(lb&&now-lb.t>SNAP_GAP_RESET){ // 장시간 미수신 후 재진입 — 현재 표시 위치에서 새 위치로 글라이드
           r.buf.length=0;r.buf.push({t:now-INTERP_DELAY,x:r.gx,y:r.gy,face,mv});}
         r.buf.push({t:now,x,y,face,mv});if(r.buf.length>12)r.buf.shift();}}
       else if(m.t==='chat'){addChat(m.text,{who:m.nick});
-        const r=[...remotes.values()].find(u=>u.nick===m.nick);
+        const r=remotes.get(m.id);
         if(r){r.say=m.text;r.sayUntil=performance.now()/1000+6;r._sayLines=null;}} // 원격 유저도 말풍선
       else if(m.t==='ranks'){gameRanks=m.ranks;paintRanks();}
+      else if(m.t==='gameGo'){serverGameGo();}
       else if(m.t==='idea'){ideaNotes.push(m.text);saveNotes();
         if(window._ideaPaint)window._ideaPaint();} // 모달 열려 있으면 즉시 갱신, 전광판은 자동
     };
@@ -52,19 +57,29 @@ const NET=(()=>{
   }
   /* 스냅샷 버퍼 보간 — 원격 유저를 INTERP_DELAY(ms) 과거 시점으로 렌더.
      패킷이 그만큼 늦어도 버퍼에 여유가 있어 멈춤·점프 없이 두 스냅샷 사이를 선형 보간 */
-  const INTERP_DELAY=200;
+  const SNAP_INTERVAL=200; // 서버 위치 스냅샷 5Hz
+  const INTERP_DELAY=320;  // 1.6개 스냅샷 여유 — 네트워크 지터에도 두 샘플 유지
+  const SNAP_GAP_RESET=700;
+  const MAX_EXTRAP=180;    // 패킷 하나가 늦을 때만 짧게 진행 방향을 예측
   let lastSnapAt=0;
   function tick(dt){
     const rt=performance.now()-INTERP_DELAY;
     for(const r of remotes.values()){
       const b=r.buf;
-      while(b.length>=2&&b[1].t<=rt)b.shift();
+      while(b.length>=3&&b[1].t<=rt)b.shift(); // 외삽에 필요한 마지막 두 샘플은 보존
       if(b.length>=2&&b[0].t<=rt){
-        const a=(rt-b[0].t)/(b[1].t-b[0].t);
-        r.gx=b[0].x+(b[1].x-b[0].x)*a;
-        r.gy=b[0].y+(b[1].y-b[0].y)*a;
-        r.face=b[1].face;r.moving=!!b[1].mv;
-      }else if(b.length===1&&b[0].t<=rt){ // 버퍼 소진(패킷 지연·정지) — 마지막 위치에서 걸음 멈춤
+        const p0=b[0],p1=b[1],span=Math.max(1,p1.t-p0.t);
+        if(rt<=p1.t){
+          const a=(rt-p0.t)/span;
+          r.gx=p0.x+(p1.x-p0.x)*a;r.gy=p0.y+(p1.y-p0.y)*a;
+          r.moving=!!p1.mv;
+        }else{ // 다음 패킷이 조금 늦으면 직전 속도로 최대 180ms만 진행
+          const extra=Math.min(rt-p1.t,MAX_EXTRAP),moving=!!p1.mv&&rt-p1.t<=MAX_EXTRAP;
+          r.gx=p1.x+(p1.x-p0.x)/span*extra;r.gy=p1.y+(p1.y-p0.y)/span*extra;
+          r.moving=moving;
+        }
+        r.face=p1.face;
+      }else if(b.length===1&&b[0].t<=rt){ // 첫 샘플만 있으면 해당 위치에서 다음 샘플 대기
         r.gx=b[0].x;r.gy=b[0].y;r.face=b[0].face;r.moving=false;
       }
       if(r.moving)r.phase+=dt*10;
@@ -72,6 +87,8 @@ const NET=(()=>{
   }
   const chat=t=>{if(ws&&ws.readyState===1)ws.send(JSON.stringify({t:'chat',text:t}));};
   const idea=t=>{if(ws&&ws.readyState===1)ws.send(JSON.stringify({t:'idea',text:t}));};
-  const score=ms=>{if(ws&&ws.readyState===1){ws.send(JSON.stringify({t:'score',ms}));return true;}return false;};
-  return{connect,tick,chat,idea,score};
+  const startGame=()=>{if(ws&&ws.readyState===1){ws.send(JSON.stringify({t:'gameStart'}));return true;}return false;};
+  const cancelGame=()=>{if(ws&&ws.readyState===1)ws.send(JSON.stringify({t:'gameCancel'}));};
+  const score=()=>{if(ws&&ws.readyState===1){ws.send(JSON.stringify({t:'score'}));return true;}return false;};
+  return{connect,tick,chat,idea,startGame,cancelGame,score};
 })();

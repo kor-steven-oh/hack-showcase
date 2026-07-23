@@ -579,19 +579,34 @@ TRACKS.forEach((tr,ti)=>{
 STATICS.sort((a,b)=>a.d-b.d);
 
 let mmTick=0;
+const VISIBLE_CHARS=[];
+const VISIBLE_REMOTES=[];
+const MAX_VISIBLE_REMOTES=120;
 function render(t,dt){
   if(!BG){BG=ctx.createLinearGradient(0,0,0,H);BG.addColorStop(0,P.bgA);BG.addColorStop(1,P.bgB);}
   ctx.fillStyle=BG;ctx.fillRect(0,0,W,H);
   ctx.save();ctx.translate(camX,camY);
   drawFloor();
-  for(const c of CHARS)c.d=c.gx+c.gy;
-  CHARS.sort((a,b)=>a.d-b.d);
+  VISIBLE_CHARS.length=0;VISIBLE_REMOTES.length=0;
+  for(const c of CHARS){
+    c.d=c.gx+c.gy;
+    if(c.isRemote){ // 화면 밖 원격 사용자는 정렬과 복잡한 캐릭터 draw 호출까지 생략
+      const s=w2s(c.gx,c.gy),x=s.x+camX,y=s.y+camY;
+      if(x<-140||x>W+140||y<-180||y>H+100)continue;
+      c._viewDist=(c.gx-player.gx)**2+(c.gy-player.gy)**2;
+      VISIBLE_REMOTES.push(c);continue;
+    }
+    VISIBLE_CHARS.push(c);
+  }
+  VISIBLE_REMOTES.sort((a,b)=>a._viewDist-b._viewDist);
+  for(let i=0;i<Math.min(MAX_VISIBLE_REMOTES,VISIBLE_REMOTES.length);i++)VISIBLE_CHARS.push(VISIBLE_REMOTES[i]);
+  VISIBLE_CHARS.sort((a,b)=>a.d-b.d);
   let ci=0;
   for(const e of STATICS){
-    while(ci<CHARS.length&&CHARS[ci].d<e.d)drawChar(CHARS[ci++],t);
+    while(ci<VISIBLE_CHARS.length&&VISIBLE_CHARS[ci].d<e.d)drawChar(VISIBLE_CHARS[ci++],t);
     e.fn(e.obj,t);
   }
-  while(ci<CHARS.length)drawChar(CHARS[ci++],t);
+  while(ci<VISIBLE_CHARS.length)drawChar(VISIBLE_CHARS[ci++],t);
   ctx.restore();
   drawParticles(dt);
   if(!(mmTick++%3))drawMinimap(); // 미니맵 20Hz면 충분

@@ -17,7 +17,7 @@ No build step. External deps: Pretendard CDN link (client) + `ws` package (serve
   - `render.js` — canvas setup, all `draw*` functions, billboard typewriter, minimap, `render()`
   - `main.js` — player/NPC/vacuum entities, input, `update()`, rAF loop, modals, reaction minigame, chat
   - `net.js` — `NET` WebSocket client (position/chat/notes/ranks sync); silently offline when opened via file://
-- `server.js` — static file serving + WS relay (port 3210, `/` serves the **white** theme). Persists message-wall notes (`idea-notes.json`) and reaction-game leaderboard (`reaction-scores.json`) as JSON files (gitignored). Guards: 30s ping/pong heartbeat, `bufferedAmount` backpressure (snapshots skipped for slow clients).
+- `server.js` — static file serving + WS relay (port 3210, `/` serves the **white** theme). Persists message-wall notes (`idea-notes.json`) and reaction-game leaderboard (`reaction-scores.json`) as debounced JSON-file writes (gitignored). Position snapshots run at 5Hz using 12×12 spatial AOI cells (current + 8 neighbors), cap crowded views to each client's nearest 180 users, and repair local full state every 5s. Guards: malformed URLs return 400, 30s ping/pong heartbeat, message rate limits, 4KB WS payload cap, and `bufferedAmount` backpressure.
 - `exhibition.css` — all styles; theme colors live in CSS variables (`:root` = dark defaults, `[data-theme="white"]` = light overrides)
 - `hello-ai-exhibition.html` — dark theme entry point (markup only)
 - `hello-ai-exhibition-white.html` — light theme entry point; identical markup except `<html data-theme="white">` and title
@@ -46,4 +46,4 @@ Sections are marked with `/* ---------- 섹션명 ---------- */` comments:
 
 ## Multiuser protocol (`server.js` ↔ `js/net.js`)
 
-JSON messages over WS: `hello`/`welcome` (join; welcome carries full user list + `notes` + `ranks`), `join`/`leave`, `pos` (client 10Hz) → `snap` (server 10Hz batched), `chat`, `idea` (message-wall note), `score` → `ranks`. Display text says "메시지 월" but internal keys/files keep the original `idea` naming — don't rename protocol fields.
+JSON messages over WS: `hello`/`welcome` (join; welcome carries full user list + `notes` + `ranks`), `join`/`leave`, `pos` (client 10Hz) → `snap` (server 5Hz AOI batched; client renders 320ms behind with bounded extrapolation), `chat`, `idea` (message-wall note), `gameStart` → `gameGo` → `score` (`gameCancel` aborts; server measures the elapsed time) → `ranks`. Display text says "메시지 월" but internal keys/files keep the original `idea` naming — don't rename protocol fields.

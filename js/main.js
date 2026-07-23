@@ -210,7 +210,7 @@ function openModal(ex){
 }
 let closeTid=0;
 function showModalBack(){clearTimeout(closeTid);modalBack.classList.remove('closing');modalBack.classList.add('open');}
-function closeModal(){modalOpen=false;gameOpen=false;if(gameTid){clearTimeout(gameTid);gameTid=0;}
+function closeModal(){if(gameOpen&&typeof NET!=='undefined')NET.cancelGame();modalOpen=false;gameOpen=false;if(gameTid){clearTimeout(gameTid);gameTid=0;}
   modalBack.classList.add('closing'); // 실제 제거는 animationend, 타이머는 폴백(스로틀 탭 등)
   clearTimeout(closeTid);closeTid=setTimeout(()=>modalBack.classList.remove('open','closing'),400);}
 modalBack.addEventListener('animationend',()=>{
@@ -283,7 +283,7 @@ function paintRanks(){
     :'<div class="rank-row">아직 기록 없음</div>';
 }
 function submitScore(ms){
-  if(typeof NET!=='undefined'&&NET.score(ms))return; // 서버가 ranks 브로드캐스트로 갱신
+  if(typeof NET!=='undefined'&&NET.score())return; // 서버가 GO 시점부터 경과 시간을 계산해 ranks 브로드캐스트
   const nick=player.nick||'게스트',i=gameRanks.findIndex(r=>r.nick===nick); // 오프라인 폴백
   if(i>=0){if(ms>=gameRanks[i].ms)return;gameRanks[i].ms=ms;}
   else gameRanks.push({nick,ms});
@@ -321,9 +321,10 @@ function gameTap(){
   if(!gameOpen)return; // 모달 닫힘 애니메이션 중 잔여 탭 — 유령 타이머 예약 방지
   if(gameSt==='idle'||gameSt==='result'){
     gameSt='wait';setPad('wait','기다리세요…','초록색이 되면 바로!');
-    gameTid=setTimeout(()=>{gameTid=0;gameSt='go';gameT0=performance.now();setPad('go','지금!','Space / 클릭');},1000+Math.random()*2500);
+    if(typeof NET!=='undefined'&&NET.startGame())return; // 온라인은 서버가 GO 시점을 발급
+    gameTid=setTimeout(()=>{gameTid=0;serverGameGo();},1000+Math.random()*2500);
   }else if(gameSt==='wait'){
-    clearTimeout(gameTid);gameTid=0;
+    clearTimeout(gameTid);gameTid=0;if(typeof NET!=='undefined')NET.cancelGame();
     gameSt='result';setPad('fail','너무 빨라요 😅','초록색을 기다렸다 눌러야 해요 · Space로 재도전');
   }else if(gameSt==='go'){
     const ms=Math.round(performance.now()-gameT0);
@@ -331,6 +332,10 @@ function gameTap(){
     submitScore(ms);
     gameSt='result';setPad('result',ms+'ms',gradeMs(ms)+' · 최고 기록 '+gameBest+'ms · Space로 재도전');
   }
+}
+function serverGameGo(){
+  if(!gameOpen||gameSt!=='wait')return;
+  gameSt='go';gameT0=performance.now();setPad('go','지금!','Space / 클릭');
 }
 
 /* ---------- 전체 채팅 ---------- */
