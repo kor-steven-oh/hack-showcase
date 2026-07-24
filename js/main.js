@@ -174,8 +174,10 @@ function update(dt,t){
   camX=lerp(camX,tx,0.12);camY=lerp(camY,ty,0.12);
 }
 
-let last=performance.now();
-function loop(now){let dt=(now-last)/1000;last=now;if(dt>0.05)dt=0.05;const t=now/1000;update(dt,t);render(t,dt);requestAnimationFrame(loop);}
+let last=performance.now(),lastRender=0;
+function loop(now){let dt=(now-last)/1000;last=now;if(dt>0.05)dt=0.05;const t=now/1000;update(dt,t);
+  if((started&&!modalOpen)||now-lastRender>=100){render(t,Math.min((now-lastRender)/1000,0.1));lastRender=now;}
+  requestAnimationFrame(loop);}
 requestAnimationFrame(loop);
 
 /* ---------- 모달 ---------- */

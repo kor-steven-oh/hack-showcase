@@ -76,7 +76,7 @@ wss.on('connection',ws=>{
     if(m.t==='hello'&&!id){
       id=seq++;
       const u={ws,nick:String(m.nick||'게스트').slice(0,12),color:String(m.color||'#4d8bff').slice(0,9),
-        x:cx(m.x),y:cy(m.y),face:1,moving:false,dirty:false,viewCell:null,limits:{},game:null};
+        x:cx(m.x),y:cy(m.y),face:1,moving:false,dirty:true,viewCell:null,limits:{},game:null};
       users.set(id,u);
       send(ws,{t:'welcome',id,notes,ranks:scores,users:[...users].filter(([i])=>i!==id)
         .map(([i,v])=>({id:i,nick:v.nick,color:v.color,x:v.x,y:v.y}))});
@@ -122,7 +122,7 @@ wss.on('connection',ws=>{
 /* 위치 관심영역(AOI) — 같은 12×12 셀과 인접 8개 셀의 사용자만 동기화.
    셀별 JSON을 한 번만 만들어 공유하고, 5초마다 전체 로컬 상태로 누락을 복구한다. */
 const AOI_CELL=12;
-const MAX_AOI_USERS=180;
+const MAX_AOI_USERS=150;
 const cellOf=u=>((u.x/AOI_CELL)|0)+','+((u.y/AOI_CELL)|0);
 const around=(map,key)=>{
   const [cx,cy]=key.split(',').map(Number),out=[];
@@ -157,10 +157,10 @@ setInterval(()=>{ // 5Hz 델타 + 0.2Hz 로컬 전체 스냅샷
         }).slice(0,MAX_AOI_USERS);
         let payload=nearest;
         if(!needsFull){const nearIds=new Set(nearest.map(v=>v[0]));payload=localDirty.filter(v=>nearIds.has(v[0]));}
-        if(payload.length)u.ws.send(JSON.stringify({t:'snap',users:payload}));
+        if(payload.length)u.ws.send(JSON.stringify({t:'snap',users:payload,...(needsFull&&{full:1})}));
         if(needsFull)u.viewCell=key;
       }else if(needsFull){
-        if(!fullMsg)fullMsg=JSON.stringify({t:'snap',users:localAll});
+        if(!fullMsg)fullMsg=JSON.stringify({t:'snap',users:localAll,full:1});
         u.ws.send(fullMsg);u.viewCell=key;
       }else if(dirtyMsg)u.ws.send(dirtyMsg);
     }

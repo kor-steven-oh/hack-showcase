@@ -1,6 +1,9 @@
 {
   "name": "hack-showcase",
   "private": true,
-  "scripts": { "start": "node server.js" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test-network.js"
+  },
   "dependencies": { "ws": "^8.18.0" }
 }
