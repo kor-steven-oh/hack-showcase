@@ -114,5 +114,6 @@ const NET=(()=>{
   const startGame=()=>{if(ws&&ws.readyState===1){ws.send(JSON.stringify({t:'gameStart'}));return true;}return false;};
   const cancelGame=()=>{if(ws&&ws.readyState===1)ws.send(JSON.stringify({t:'gameCancel'}));};
   const score=()=>{if(ws&&ws.readyState===1){ws.send(JSON.stringify({t:'score'}));return true;}return false;};
-  return{connect,tick,chat,idea,vote,startGame,cancelGame,score};
+  const userCount=()=>conn==='online'?remotes.size+1:conn==='connecting'?10:0;
+  return{connect,tick,chat,idea,vote,startGame,cancelGame,score,userCount};
 })();

@@ -17,6 +17,11 @@ function testClientScope(){
   context.NET.connect('tester');
   const socket=FakeWebSocket.instance;socket.readyState=1;socket.onopen();
   socket.message({t:'welcome',users:[{id:1,nick:'near',x:3,y:3},{id:2,nick:'far',x:80,y:45}],notes:[],ranks:[]});
+  assert.equal(context.NET.userCount(),3);
+  for(let id=3;id<=9;id++)socket.message({t:'join',id,nick:'user'+id,x:3,y:3});
+  assert.equal(context.NET.userCount(),10);
+  socket.message({t:'leave',id:9});
+  assert.equal(context.NET.userCount(),9);
   assert.equal(chars.length,2);
   socket.message({t:'snap',full:1,users:[[1,3,3,1,0]]});
   assert.deepEqual(chars.map(c=>c.nick).filter(Boolean),['near']);
@@ -45,6 +50,10 @@ function testJudgePanelConfig(){
   assert(source.includes("slideTo(slide+1)"));
   assert(source.includes("new Blob([html],{type:'text/html;charset=utf-8'})"));
   assert(source.includes('id="brochureDownload"'));
+  const ambient=source.match(/const AMBIENT_CHAT=\[([\s\S]*?)\n\];/)[1];
+  assert.equal((ambient.match(/^\s*'/gm)||[]).length,50);
+  assert(source.includes("NET.userCount()<10"));
+  assert(source.includes('ambientChatCount>=AMBIENT_CHAT.length'));
 }
 
 const wait=(ms)=>new Promise(r=>setTimeout(r,ms));

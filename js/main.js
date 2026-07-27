@@ -531,6 +531,69 @@ function addChat(text,opt){
   while(chatBody.childElementCount>200)chatBody.firstElementChild.remove(); // DOM 무한 누적 방지
   if(!chat.classList.contains('collapsed'))chatBody.scrollTop=chatBody.scrollHeight; // 접힘(display:none) 중엔 강제 레이아웃 스킵
 }
+const AMBIENT_CHAT=[
+  '어느 부스부터 볼지 행복한 고민 중이에요 😊',
+  '중앙 전광판 앞에서 랭킹 확인했어요?',
+  'T1 설계·EDA 쪽 데모가 정말 빠르네요',
+  '방금 투표하고 왔습니다 🙌',
+  'AI 심사위원단 따라가면 재밌는 부스가 보여요',
+  '프로젝트 소개 슬라이드 구성이 좋네요',
+  '데모 영상 보고 아이디어가 확 이해됐어요',
+  'T2 수율·품질 부스도 꼭 들러보세요',
+  '좋아요 순위가 계속 바뀌고 있네요!',
+  '이런 전시 방식 신선하고 재밌어요',
+  '팀 설명 들으니 기술 포인트가 명확하네요',
+  '메시지 월에 응원 한마디 남겼어요 💬',
+  '지금 중앙 광장에서 만날 분?',
+  'T3 설비·운영 트랙부터 정주행 중입니다',
+  '상세 소개서 다운로드 기능 편하네요',
+  '아이디어도 좋고 완성도도 높아요',
+  '어떤 팀에 투표할지 고민되네요',
+  '심사위원들이 한참 토론하고 있어요 👀',
+  '플레이그라운드 미니게임 해보셨나요?',
+  '반응속도 랭킹 도전 중입니다 🔥',
+  'T4 HR·People 프로젝트가 따뜻하네요',
+  '부스마다 색깔이 달라서 찾기 쉬워요',
+  '발표 자료가 핵심만 잘 담겼어요',
+  '데모에서 실제 활용 장면이 잘 보이네요',
+  '좋아요 한 표가 순위를 바꿀 수도 있겠어요',
+  '카페 라운지에서 잠깐 쉬어갑니다 ☕',
+  'T5 DevX 팀들 아이디어가 실용적이네요',
+  '코드 리뷰 프로젝트 인상 깊었어요',
+  'AI 심사위원 오라가 멀리서도 보여요',
+  '전시관 한 바퀴 도는 데 시간 가는 줄 모르겠네요',
+  '팀원 소개까지 볼 수 있어서 좋습니다',
+  '이 프로젝트 실제로 써보고 싶어요',
+  '부스 앞에서 Space 누르면 상세 화면이 열려요',
+  '중앙 랭킹 보드에서 바로 투표할 수 있어요',
+  '다들 가장 기억에 남는 프로젝트가 뭔가요?',
+  '기술 스택 설명이 구체적이라 좋네요',
+  '심사위원 질문이 꽤 날카롭네요 😄',
+  '아이디어와 구현의 균형이 훌륭합니다',
+  '팀별 좋아요 수 보는 재미가 있네요',
+  '전시 동선이 넓어서 둘러보기 편해요',
+  '저는 자동화 주제 프로젝트가 눈에 들어오네요',
+  '발표 슬라이드 다음 장도 꼭 넘겨보세요',
+  '프로젝트 소개서를 저장해뒀습니다',
+  '다른 트랙과 결합해도 재미있겠어요',
+  '현업 문제를 제대로 짚은 프로젝트네요',
+  '짧은 데모인데도 임팩트가 큽니다',
+  '심사 결과가 벌써 궁금해요!',
+  '응원하는 팀에 좋아요 눌렀습니다 💙',
+  '마지막 부스까지 전부 보고 투표하려고요',
+  '모든 참가 팀 수고 많으셨습니다 👏'
+];
+let ambientChatCount=0,ambientChatStarted=false;
+function queueAmbientChat(){
+  if(ambientChatCount>=AMBIENT_CHAT.length)return;
+  setTimeout(()=>{
+    if(typeof NET==='undefined'||NET.userCount()<10){
+      const i=ambientChatCount++;
+      addChat(AMBIENT_CHAT[i],{who:NICKS[(i*7+3)%NICKS.length]});
+    }
+    queueAmbientChat();
+  },2200+Math.random()*2800);
+}
 function sendChat(){
   const v=chatText.value.trim();if(!v)return;
   addChat(v,{self:true});chatText.value='';
@@ -543,8 +606,6 @@ chatHead.addEventListener('click',()=>{
   if(!chat.classList.toggle('collapsed'))chatBody.scrollTop=chatBody.scrollHeight; // 펼칠 때 최신 메시지로
 });
 addChat('전체 채팅에 입장했어요. 아직 서버 연결 전이라 내가 보낸 메시지는 내 화면에만 표시됩니다.',{sys:true});
-addChat('부스 어디부터 도실 거예요?',{who:'김도현'});
-addChat('저는 T1 설계·EDA 부스부터요 👀',{who:'이서연'});
 
 /* 입장 — 닉네임 입력(자동 추천 기본값) 후 멀티유저 접속 */
 const nickIn=document.getElementById('nickIn');
@@ -558,5 +619,6 @@ if(nickIn){
 document.getElementById('enterBtn').onclick=()=>{
   player.nick=((nickIn&&nickIn.value.trim())||suggestNick()).slice(0,12);
   if(typeof NET!=='undefined')NET.connect(player.nick);
+  if(!ambientChatStarted){ambientChatStarted=true;queueAmbientChat();}
   started=true;const intro=document.getElementById('intro');intro.style.opacity='0';setTimeout(()=>intro.style.display='none',500);
 };
