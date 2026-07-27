@@ -35,9 +35,10 @@ TRACKS.forEach((tr,ti)=>{
 });
 
 /* ---------- 장식 (실내 캠퍼스: 라운지 · 라이브러리 · 아이디어 월 · 스테이지) ---------- */
-/* act: 상호작용 종류 — game/idea/lib/info (main.js actSpot 라우팅) */
+/* act: 상호작용 종류 — ranking/game/idea/info (main.js actSpot 라우팅) */
 const DECOR=[
   {type:'billboard',gx:PLAZA.x,gy:PLAZA.y-3.5,text:'HELLO AI',sub:'S.LSI  HACKATHON  EXPO',color:'#3d7bff',w:250,fs:40,face:'ur'}, // 고정 문구 (애니메이션 없음)
+  {type:'board',gx:PLAZA.x,gy:PLAZA.y+0.8,act:'ranking'}, // 전광판 앞 팀 랭킹·투표
   // 트랙 존 중앙 라운지 — 트랙 색 소파 4개가 긴 테이블을 두고 두 대각선에서 정면으로 마주봄
   // + 소파 위 착석 방문객 2~3명 (좌석을 시청자 쪽으로 반 타일 내밀어 d가 소파보다 커짐 — 소파에 안 가려짐)
   ...ZONES.flatMap((z,i)=>{

@@ -18,7 +18,7 @@ function npcTarget(n){
   else{const p=randAisle();n.tx=clamp(p.x,1.6,HALL_W-2.6);n.ty=clamp(p.y,1.6,HALL_D-2.6);}
   n.state='walk';
 }
-const NPC_COUNT=200,npcs=[];
+const NPC_COUNT=50,npcs=[];
 for(let i=0;i<NPC_COUNT;i++){
   let sx,sy;do{sx=6+Math.random()*(HALL_W-12);sy=HALL_D-3-Math.random()*2.5;}while(!walkable(sx,sy));
   const n={gx:sx,gy:sy,nick:NICKS[i%NICKS.length],color:NPC_COLORS[i%NPC_COLORS.length],head:P.npcHead,
@@ -57,6 +57,7 @@ function actSpot(){
   if(a==='game')openGame();
   else if(a==='idea')openIdea();
   else if(a==='info')openInfo();
+  else if(a==='ranking')openRanking();
 }
 function interact(){if(activeBooth)openModal(activeBooth.ex);else actSpot();}
 addEventListener('keydown',e=>{
@@ -220,7 +221,7 @@ modalBack.addEventListener('animationend',()=>{
 modalBack.addEventListener('click',e=>{if(e.target===modalBack)closeModal();});
 
 /* ---------- 상호작용 스팟 모달 (아이디어 월 · 안내) ---------- */
-const ACT_BTN={game:'▶ 게임하기',idea:'✏ 메시지',info:'ℹ 안내'};
+const ACT_BTN={game:'▶ 게임하기',idea:'✏ 메시지',info:'ℹ 안내',ranking:'♥ 랭킹·투표'};
 function spotHead(acc,tag,title,sub){
   return `<div class="m-head">
     <div class="accent-line" style="background:linear-gradient(90deg,${acc},transparent)"></div>
@@ -278,6 +279,38 @@ function openInfo(){
 let gameOpen=false,gameSt='idle',gameTid=0,gameT0=0,gameBest=null;
 let gameRanks=[]; // [{nick,ms}] — 온라인이면 서버 순위(welcome/ranks), 오프라인이면 내 기록만
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let teamLikes=null,votedTeams=null;
+try{teamLikes=JSON.parse(localStorage.getItem('teamLikes'));}catch(e){}
+try{votedTeams=new Set(JSON.parse(localStorage.getItem('votedTeams')));}catch(e){}
+teamLikes=EXHIBITS.map((_,i)=>Math.max(0,+teamLikes?.[i]||0));
+if(!(votedTeams instanceof Set))votedTeams=new Set();
+function setTeamLikes(likes){
+  teamLikes=EXHIBITS.map((_,i)=>Math.max(0,+likes?.[i]||0));
+  try{localStorage.setItem('teamLikes',JSON.stringify(teamLikes));}catch(e){}
+  paintTeamRanks();
+}
+function paintTeamRanks(){
+  const el=document.getElementById('teamRankList');if(!el)return;
+  const ranked=EXHIBITS.map((ex,i)=>({ex,likes:teamLikes[i]})).sort((a,b)=>b.likes-a.likes||a.ex.id-b.ex.id);
+  el.innerHTML=ranked.map((r,i)=>`<div class="team-rank-row">
+    <span class="team-rk">${i+1}</span><span class="team-rank-name"><b>${esc(r.ex.team)}</b><small>${esc(r.ex.title)}</small></span>
+    <span class="team-likes">♥ ${r.likes}</span><button data-vote="${r.ex.id}"${votedTeams.has(r.ex.id)?' disabled':''}>${votedTeams.has(r.ex.id)?'✓ 투표함':'투표'}</button>
+  </div>`).join('');
+  el.querySelectorAll('[data-vote]').forEach(btn=>btn.onclick=()=>voteTeam(+btn.dataset.vote));
+}
+function voteTeam(id){
+  const i=EXHIBITS.findIndex(ex=>ex.id===id);if(i<0||votedTeams.has(id))return;
+  votedTeams.add(id);teamLikes[i]++;
+  try{localStorage.setItem('votedTeams',JSON.stringify([...votedTeams]));}catch(e){}
+  setTeamLikes(teamLikes);
+  if(typeof NET!=='undefined')NET.vote(id);
+}
+function openRanking(){
+  const acc='#e0533f';
+  openSpotModal(spotHead(acc,'TEAM RANKING · 실시간 투표','팀 랭킹','마음에 든 프로젝트에 좋아요를 눌러 응원하세요')+
+    `<div class="m-body"><div class="team-rank-list" id="teamRankList"></div></div>`);
+  paintTeamRanks();
+}
 function paintRanks(){
   const el=document.getElementById('rankList');if(!el)return;
   el.innerHTML=gameRanks.length?gameRanks.map((r,i)=>

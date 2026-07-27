@@ -23,7 +23,7 @@ file:// 로 열면 `net.js`가 조용히 오프라인 모드로 남고 나머지
 | `data.js` | 트랙 5개 + seeded PRNG 샘플 부스 20개 | `TRACKS`, `EXHIBITS` |
 | `world.js` | 아이소메트릭 수학, 홀 지오메트리, 배치, 충돌 | `w2s()`, `BOOTHS`, `ZONES`, `DECOR`, `FLOOR`/`WALLS`, `walkable()` |
 | `render.js` | 모든 `draw*`, 전광판 타자기, 미니맵, `render()` | `MAX_VISIBLE_REMOTES` |
-| `main.js` | 엔티티(player/NPC 200/도슨트 4/청소기), 입력, `update()`, rAF 루프, 모달, 미니게임, 채팅 | `player`, `npcs`, `CHARS` |
+| `main.js` | 엔티티(player/NPC 50/도슨트 4/청소기), 입력, `update()`, rAF 루프, 모달, 미니게임, 채팅 | `player`, `npcs`, `CHARS` |
 | `net.js` | WS 클라이언트, 원격 사용자 보간, 동기화 | `NET` |
 
 섹션 구분은 `/* ---------- 섹션명 ---------- */` 주석 — 상세는 CLAUDE.md 참고.
@@ -47,12 +47,13 @@ file:// 로 열면 `net.js`가 조용히 오프라인 모드로 남고 나머지
 WS 위 JSON 메시지.
 
 ```
-hello → welcome(전체 유저 + notes + ranks)
+hello → welcome(전체 유저 + notes + ranks + likes)
 join / leave
 pos(클라 10Hz) → snap(서버 5Hz, AOI 배치)
 chat
 idea            ← 메시지 월 노트 (표기명은 "메시지 월"이지만 프로토콜 키는 idea — 변경 금지)
 gameStart → gameGo → score(서버가 시간 측정·검증) → ranks   (gameCancel 중단)
+vote(팀 id) → likes(20개 팀 누적 좋아요)
 ```
 
 ### 위치 동기화 (500명 대비 설계)
@@ -69,7 +70,7 @@ gameStart → gameGo → score(서버가 시간 측정·검증) → ranks   (gam
 
 ## 영속화
 
-파일 DB 2개 — `idea-notes.json`(메시지 월), `reaction-scores.json`(랭킹). 대규모 사용 시 SQLite 전환 검토 항목 (TASKS.md).
+파일 DB 3개 — `idea-notes.json`(메시지 월), `reaction-scores.json`(게임 랭킹), `team-likes.json`(팀 좋아요). 대규모 사용 시 SQLite 전환 검토 항목 (TASKS.md).
 
 ## 테스트
 

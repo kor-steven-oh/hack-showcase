@@ -201,8 +201,8 @@ function drawBillboard(d,t){
 }
 
 /* 상호작용 말풍선 (E/Space 안내) — 부스 외 스팟 공용 */
-const ACT_TXT={game:'게임하기',idea:'메시지 남기기',info:'안내 보기'};
-const ACT_CLR={idea:'#21a17a',info:'#1428a0'};
+const ACT_TXT={game:'게임하기',idea:'메시지 남기기',info:'안내 보기',ranking:'랭킹·투표 보기'};
+const ACT_CLR={idea:'#21a17a',info:'#1428a0',ranking:'#e0533f'};
 function actBubble(x,yTop,act,t,color){
   const py=yTop-Math.sin(t*3)*2,c=color||ACT_CLR[act]||'#1428a0';
   const label='▶ '+ACT_TXT[act]+' · Space';
@@ -265,15 +265,25 @@ function drawBoard(d,t){
   ctx.fillStyle=P.bannerFrame;ctx.fillRect(x-w/2+10,y-24,6,24);ctx.fillRect(x+w/2-16,y-24,6,24);
   roundRect(x-w/2-4,top-4,w+8,h+8,6,P.bannerFrame);
   roundRect(x-w/2,top,w,h,4,'#f2efe6');
+  const ranking=d.act==='ranking';
   ctx.fillStyle='#1428a0';ctx.font='800 11px Pretendard';ctx.textAlign='left';ctx.textBaseline='top';
-  ctx.fillText('MESSAGE WALL · 메시지 월',x-w/2+8,top+7);
-  const NC=['#ffd166','#8ce99a','#74c0fc','#ffa8a8','#e599f7'];
-  for(let i=0;i<12;i++){const nx=x-w/2+10+(i%4)*34,ny=top+26+((i/4)|0)*20;
-    ctx.fillStyle=NC[(i*7+Math.floor(d.gx))%5];ctx.fillRect(nx,ny,26,15); // gx가 소수여도 유효 인덱스
-    ctx.strokeStyle='rgba(0,0,0,0.25)';ctx.lineWidth=1;
-    ctx.beginPath();ctx.moveTo(nx+4,ny+6);ctx.lineTo(nx+20,ny+6);ctx.moveTo(nx+4,ny+10);ctx.lineTo(nx+14,ny+10);ctx.stroke();
+  ctx.fillText(ranking?'TEAM RANKING · 실시간 투표':'MESSAGE WALL · 메시지 월',x-w/2+8,top+7);
+  if(ranking){
+    for(let i=0;i<4;i++){
+      const yy=top+27+i*14;
+      ctx.fillStyle=i===0?'#e6b24d':'#6675a0';ctx.font='800 10px Pretendard';ctx.fillText(String(i+1),x-w/2+12,yy);
+      ctx.fillStyle='#dbe1ec';ctx.fillRect(x-w/2+28,yy+1,82-i*8,7);
+      ctx.fillStyle='#e0533f';ctx.fillText('♥',x+w/2-22,yy-2);
+    }
+  }else{
+    const NC=['#ffd166','#8ce99a','#74c0fc','#ffa8a8','#e599f7'];
+    for(let i=0;i<12;i++){const nx=x-w/2+10+(i%4)*34,ny=top+26+((i/4)|0)*20;
+      ctx.fillStyle=NC[(i*7+Math.floor(d.gx))%5];ctx.fillRect(nx,ny,26,15); // gx가 소수여도 유효 인덱스
+      ctx.strokeStyle='rgba(0,0,0,0.25)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(nx+4,ny+6);ctx.lineTo(nx+20,ny+6);ctx.moveTo(nx+4,ny+10);ctx.lineTo(nx+14,ny+10);ctx.stroke();
+    }
   }
-  if(d===activeSpot)actBubble(x,top-16,'idea',t);
+  if(d===activeSpot)actBubble(x,top-16,d.act,t);
 }
 
 function drawChair(d){

@@ -43,6 +43,17 @@ const saveScores=()=>{clearTimeout(scoresSaveTid);scoresSaveTid=setTimeout(()=>{
   scoresSaveTid=0;fs.writeFile(SCORES_FILE,JSON.stringify(scores),()=>{});
 },250);};
 
+/* 팀 좋아요 — 전시 20개 순서대로 누적 */
+const LIKES_FILE=path.join(__dirname,'team-likes.json');
+let likes=null;
+try{likes=JSON.parse(fs.readFileSync(LIKES_FILE,'utf8'));}catch(e){}
+if(!Array.isArray(likes))likes=[];
+likes=Array.from({length:20},(_,i)=>Math.max(0,+likes[i]||0));
+let likesSaveTid=0;
+const saveLikes=()=>{clearTimeout(likesSaveTid);likesSaveTid=setTimeout(()=>{
+  likesSaveTid=0;if(process.env.NODE_ENV!=='test')fs.writeFile(LIKES_FILE,JSON.stringify(likes),()=>{});
+},250);};
+
 let seq=1;
 const users=new Map(); // id → {ws,nick,color,x,y,face,moving,dirty}
 const send=(ws,m)=>{if(ws.readyState===OPEN)ws.send(JSON.stringify(m));};
@@ -76,9 +87,9 @@ wss.on('connection',ws=>{
     if(m.t==='hello'&&!id){
       id=seq++;
       const u={ws,nick:String(m.nick||'게스트').slice(0,12),color:String(m.color||'#4d8bff').slice(0,9),
-        x:cx(m.x),y:cy(m.y),face:1,moving:false,dirty:true,viewCell:null,limits:{},game:null};
+        x:cx(m.x),y:cy(m.y),face:1,moving:false,dirty:true,viewCell:null,limits:{},game:null,votes:new Set()};
       users.set(id,u);
-      send(ws,{t:'welcome',id,notes,ranks:scores,users:[...users].filter(([i])=>i!==id)
+      send(ws,{t:'welcome',id,notes,ranks:scores,likes,users:[...users].filter(([i])=>i!==id)
         .map(([i,v])=>({id:i,nick:v.nick,color:v.color,x:v.x,y:v.y}))});
       bcast({t:'join',id,nick:u.nick,color:u.color,x:u.x,y:u.y},ws);
     }else if(m.t==='pos'&&id){
@@ -95,6 +106,11 @@ wss.on('connection',ws=>{
       notes.push(text);if(notes.length>200)notes=notes.slice(-200);
       saveNotes();
       bcast({t:'idea',text},ws); // 작성자는 로컬에 이미 반영됨
+    }else if(m.t==='vote'&&id){
+      const u=users.get(id),teamId=Number(m.id);
+      if(!u||!Number.isInteger(teamId)||teamId<1||teamId>likes.length||u.votes.has(teamId))return;
+      u.votes.add(teamId);likes[teamId-1]++;saveLikes();
+      bcast({t:'likes',likes});
     }else if(m.t==='gameStart'&&id){
       const u=users.get(id);if(!u||u.game||!allowed(u,'game',4,10000))return;
       u.game={timer:0,goAt:0};

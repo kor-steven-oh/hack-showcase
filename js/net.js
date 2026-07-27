@@ -42,7 +42,8 @@ const NET=(()=>{
       let m;try{m=JSON.parse(ev.data);}catch(e){return;}
       if(m.t==='welcome'){conn='online';retry=0;for(const u of m.users)add(u);rebuild();
         if(Array.isArray(m.notes)&&m.notes.length){ideaNotes.length=0;ideaNotes.push(...m.notes);saveNotes();} // 서버가 노트 원본
-        if(Array.isArray(m.ranks)){gameRanks=m.ranks;paintRanks();}}
+        if(Array.isArray(m.ranks)){gameRanks=m.ranks;paintRanks();}
+        if(Array.isArray(m.likes))setTeamLikes(m.likes);}
       else if(m.t==='join'){add(m);rebuild();addChat(m.nick+' 님이 입장했어요',{sys:true});}
       else if(m.t==='leave'){const r=remotes.get(m.id);
         if(r){activeRemotes.delete(r);remotes.delete(m.id);rebuild();addChat(r.nick+' 님이 퇴장했어요',{sys:true});}}
@@ -66,6 +67,7 @@ const NET=(()=>{
         const r=remotes.get(m.id);
         if(r){r.say=m.text;r.sayUntil=performance.now()/1000+6;r._sayLines=null;}} // 원격 유저도 말풍선
       else if(m.t==='ranks'){gameRanks=m.ranks;paintRanks();}
+      else if(m.t==='likes'){setTeamLikes(m.likes);}
       else if(m.t==='gameGo'){serverGameGo();}
       else if(m.t==='idea'){ideaNotes.push(m.text);saveNotes();
         if(window._ideaPaint)window._ideaPaint();} // 모달 열려 있으면 즉시 갱신, 전광판은 자동
@@ -108,8 +110,9 @@ const NET=(()=>{
   }
   const chat=t=>{if(ws&&ws.readyState===1)ws.send(JSON.stringify({t:'chat',text:t}));};
   const idea=t=>{if(ws&&ws.readyState===1)ws.send(JSON.stringify({t:'idea',text:t}));};
+  const vote=id=>{if(ws&&ws.readyState===1){ws.send(JSON.stringify({t:'vote',id}));return true;}return false;};
   const startGame=()=>{if(ws&&ws.readyState===1){ws.send(JSON.stringify({t:'gameStart'}));return true;}return false;};
   const cancelGame=()=>{if(ws&&ws.readyState===1)ws.send(JSON.stringify({t:'gameCancel'}));};
   const score=()=>{if(ws&&ws.readyState===1){ws.send(JSON.stringify({t:'score'}));return true;}return false;};
-  return{connect,tick,chat,idea,startGame,cancelGame,score};
+  return{connect,tick,chat,idea,vote,startGame,cancelGame,score};
 })();

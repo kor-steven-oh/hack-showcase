@@ -11,7 +11,7 @@ function testClientScope(){
   const context={WebSocket:FakeWebSocket,location:{protocol:'http:',host:'local'},document:{getElementById:()=>chatCount},
     requestAnimationFrame:cb=>cb(),setInterval:()=>1,clearInterval(){},setTimeout:fn=>timers.push(fn),clearTimeout(){},
     performance:{now:()=>1000},JSON,Math,Map,Set,player,vac,CHARS:chars,npcs:[],P:{npcHead:'#fff'},
-    NPC_COLORS:['#fff'],ideaNotes:[],saveNotes(){},gameRanks:[],paintRanks(){},addChat(){},serverGameGo(){}};
+    NPC_COLORS:['#fff'],ideaNotes:[],saveNotes(){},gameRanks:[],paintRanks(){},setTeamLikes(){},addChat(){},serverGameGo(){}};
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(path.join(__dirname,'js/net.js'),'utf8')+';globalThis.NET=NET',context);
   context.NET.connect('tester');
@@ -45,13 +45,13 @@ const connect=(url,nick,x,y)=>new Promise((resolve,reject)=>{
   const ws=new WebSocket(url);
   ws.once('error',reject);
   ws.once('open',()=>ws.send(JSON.stringify({t:'hello',nick,x,y})));
-  next(ws,m=>m.t==='welcome').then(()=>resolve(ws),reject);
+  next(ws,m=>m.t==='welcome').then(m=>{ws.welcome=m;resolve(ws);},reject);
 });
 
 (async()=>{
   testClientScope();
   const port=await freePort(),url=`ws://127.0.0.1:${port}`;
-  const child=spawn(process.execPath,['server.js'],{cwd:__dirname,env:{...process.env,PORT:String(port)}});
+  const child=spawn(process.execPath,['server.js'],{cwd:__dirname,env:{...process.env,PORT:String(port),NODE_ENV:'test'}});
   const sockets=[];
   try{
     await Promise.race([
@@ -67,10 +67,14 @@ const connect=(url,nick,x,y)=>new Promise((resolve,reject)=>{
     const {id}=await joined;
     const near=await next(a,m=>m.t==='snap'&&m.users.some(u=>u[0]===id));
     assert(near.users.some(u=>u[0]===id));
+    const likesBefore=a.welcome.likes[0];
+    b.send(JSON.stringify({t:'vote',id:1}));
+    const voted=await next(a,m=>m.t==='likes');
+    assert.equal(voted.likes[0],likesBefore+1);
     b.send(JSON.stringify({t:'pos',x:80,y:45,moving:true}));
     const full=await next(a,m=>m.t==='snap'&&m.full===1&&!m.users.some(u=>u[0]===id));
     assert.equal(full.full,1);
-    console.log('network AOI reconciliation: ok');
+    console.log('network AOI reconciliation and voting: ok');
   }finally{
     for(const ws of sockets)ws.close();
     child.kill();
