@@ -43,6 +43,7 @@ function pickTags(pool){const c=[...pool];const out=[];for(let i=0;i<4&&c.length
 
 const EXHIBITS=[]; let _id=0;
 const PER_TRACK=4;
+const DEFAULT_TEAM_LIKES=[128,96,83,74,112,89,68,55,101,87,79,63,94,76,71,58,139,118,92,81];
 TRACKS.forEach((tr,ti)=>{
   tr.titles.slice(0,PER_TRACK).forEach((title,idx)=>{
     _id++;
@@ -52,7 +53,7 @@ TRACKS.forEach((tr,ti)=>{
       id:_id, trackIdx:ti, code:tr.code, trackName:tr.name, accent:tr.accent,
       title, team:'Team '+pick(TEAMW), award:'AI '+tier[1]+' · '+tier[0],
       summary:title+' — '+tr.tagline, desc:tr.blurb,
-      tags:pickTags(tr.tags), members:members(), videoUrl:''
+      tags:pickTags(tr.tags), members:members(), videoUrl:'', likes:DEFAULT_TEAM_LIKES[_id-1]
     });
   });
 });

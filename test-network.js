@@ -29,6 +29,24 @@ function testClientScope(){
   assert.equal(chatCount.textContent,'연결 중…');
 }
 
+function testJudgePanelConfig(){
+  const source=fs.readFileSync(path.join(__dirname,'js/main.js'),'utf8');
+  assert.match(source,/const JUDGE_OFFSETS=\[\[-1\.25,-0\.1\],\[0,0\],\[1\.3,0\.15\],\[-0\.65,1\.15\],\[0\.75,1\.3\]\]/);
+  for(const name of ['Ada','Turing','Grace','Nova','Atlas'])assert(source.includes(`'${name}'`));
+  for(const line of ['음.. 훌륭하군!','대단해!','이런 혁신이!'])assert(source.includes(line));
+  const dialogues=source.match(/const JUDGE_DIALOGUES=\[([\s\S]*?)\n\];/)[1];
+  assert.equal((dialogues.match(/\[\[\d,/g)||[]).length,12);
+  assert(source.includes('while(line===judgeGroup.lastLine)'));
+  assert(source.includes('if(replying)judgeGroup.leaveAt=t+4.5'));
+  assert(source.includes('judgeGroup.timer<=0&&!judgeGroup.reply&&t>=judgeGroup.leaveAt'));
+  assert(source.includes('judgeGroup.timer=12+Math.random()*5'));
+  assert(source.includes('judgeGroup.visited.has(i)'));
+  assert.equal((source.match(/class="project-slide(?: on)?"/g)||[]).length,3);
+  assert(source.includes("slideTo(slide+1)"));
+  assert(source.includes("new Blob([html],{type:'text/html;charset=utf-8'})"));
+  assert(source.includes('id="brochureDownload"'));
+}
+
 const wait=(ms)=>new Promise(r=>setTimeout(r,ms));
 const freePort=()=>new Promise((resolve,reject)=>{
   const s=net.createServer().once('error',reject).listen(0,'127.0.0.1',()=>{
@@ -50,6 +68,7 @@ const connect=(url,nick,x,y)=>new Promise((resolve,reject)=>{
 
 (async()=>{
   testClientScope();
+  testJudgePanelConfig();
   const port=await freePort(),url=`ws://127.0.0.1:${port}`;
   const child=spawn(process.execPath,['server.js'],{cwd:__dirname,env:{...process.env,PORT:String(port),NODE_ENV:'test'}});
   const sockets=[];
@@ -62,6 +81,7 @@ const connect=(url,nick,x,y)=>new Promise((resolve,reject)=>{
       wait(3000).then(()=>{throw new Error('server start timeout');})
     ]);
     const a=await connect(url,'A',2,2);sockets.push(a);
+    assert(a.welcome.likes.some(Number));
     const joined=next(a,m=>m.t==='join'&&m.nick==='B');
     const b=await connect(url,'B',3,3);sockets.push(b);
     const {id}=await joined;

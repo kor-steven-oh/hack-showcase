@@ -513,6 +513,10 @@ function drawChar(e,t){
   const bob=(e.moving)?Math.sin(e.phase)*2:Math.sin(t*2.4+e.phase)*1;
   ctx.save();ctx.translate(x,y);ctx.scale(1,0.5);ctx.fillStyle=P.charShadow;ctx.beginPath();ctx.arc(0,0,11,0,Math.PI*2);ctx.fill();ctx.restore();
   if(e.isPlayer){ctx.save();ctx.translate(x,y);ctx.scale(1,0.5);const g=ctx.createRadialGradient(0,0,2,0,0,26);g.addColorStop(0,'rgba(61,123,255,0.45)');g.addColorStop(1,'rgba(61,123,255,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,26,0,Math.PI*2);ctx.fill();ctx.restore();}
+  if(e.isJudge){ctx.save();ctx.translate(x,y);ctx.scale(1,0.5);const r=29+Math.sin(t*2+e.phase)*2,g=ctx.createRadialGradient(0,0,5,0,0,r);
+    g.addColorStop(0,'rgba(167,139,250,0.5)');g.addColorStop(0.55,'rgba(139,92,246,0.22)');g.addColorStop(1,'rgba(139,92,246,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='rgba(196,181,253,0.65)';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,0,17+Math.sin(t*2.5+e.phase),0,Math.PI*2);ctx.stroke();ctx.restore();}
   const by=y-bob;
   roundRect(x-8,by-26,16,20,7,e.color);
   ctx.fillStyle='rgba(255,255,255,0.14)';roundRectPath(x-8,by-26,16,10,7);ctx.fill();

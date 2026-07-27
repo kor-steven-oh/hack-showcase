@@ -45,10 +45,11 @@ const saveScores=()=>{clearTimeout(scoresSaveTid);scoresSaveTid=setTimeout(()=>{
 
 /* 팀 좋아요 — 전시 20개 순서대로 누적 */
 const LIKES_FILE=path.join(__dirname,'team-likes.json');
+const DEFAULT_LIKES=[128,96,83,74,112,89,68,55,101,87,79,63,94,76,71,58,139,118,92,81];
 let likes=null;
 try{likes=JSON.parse(fs.readFileSync(LIKES_FILE,'utf8'));}catch(e){}
-if(!Array.isArray(likes))likes=[];
-likes=Array.from({length:20},(_,i)=>Math.max(0,+likes[i]||0));
+const legacyLikes=Array.isArray(likes)&&Math.max(0,...likes)<50;
+likes=DEFAULT_LIKES.map((n,i)=>Math.max(0,+(Array.isArray(likes)?likes[i]:0)||0)+(legacyLikes||!Array.isArray(likes)?n:0));
 let likesSaveTid=0;
 const saveLikes=()=>{clearTimeout(likesSaveTid);likesSaveTid=setTimeout(()=>{
   likesSaveTid=0;if(process.env.NODE_ENV!=='test')fs.writeFile(LIKES_FILE,JSON.stringify(likes),()=>{});

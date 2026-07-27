@@ -41,6 +41,58 @@ function guideTarget(g){ // 후보 6개 중 다른 도슨트들과 가장 먼 �
   g.tx=bx;g.ty=by;
 }
 
+/* AI 심사위원단(5) — 한 팀으로 부스를 순회하며 함께 평가 */
+const JUDGE_NAMES=['Ada','Turing','Grace','Nova','Atlas'];
+const JUDGE_LINES=[
+  '음.. 훌륭하군!','대단해!','이런 혁신이!','완성도가 높군요!','흥미로운 접근입니다!',
+  '문제 정의가 명확하군요.','실무 활용성이 돋보입니다!','데모가 인상적이에요.','기술 선택이 영리하군요!',
+  '사용자 경험까지 고민했네요.','확장 가능성이 기대됩니다!','팀워크가 느껴지는 결과네요.','아이디어가 참 신선합니다!',
+  '데이터를 잘 활용했군요.','발표가 아주 설득력 있어요!','조금 더 자세히 보고 싶군요.',
+  '핵심 가치가 한눈에 들어오네요.','복잡한 문제를 간결하게 풀었군요!','결과 지표가 인상적입니다.',
+  '현업의 어려움을 정확히 짚었어요.','모델의 설명 가능성도 좋군요.','프로토타입 완성도가 기대 이상이에요!',
+  '접근 방식에 독창성이 있습니다.','도입 효과가 명확해 보이네요.','기술과 사용자 가치의 균형이 좋아요.',
+  '안정성까지 잘 고려했군요.','발전 가능성이 큰 프로젝트입니다!','세부 구현이 아주 탄탄하네요.'
+];
+const JUDGE_DIALOGUES=[
+  [[0,'Turing, 이 구조는 어떻게 봐요?'],[1,'좋습니다. 확장성도 충분해 보여요.']],
+  [[2,'Nova, 사용자 관점에서는 어때요?'],[3,'흐름이 직관적이라 바로 쓸 수 있겠어요.']],
+  [[4,'Ada, 이 아이디어의 강점은 뭘까요?'],[0,'명확한 문제 해결과 높은 실용성이에요.']],
+  [[1,'Grace, 기술 선택에 동의하나요?'],[2,'네, 요구사항에 아주 잘 맞는 선택이에요.']],
+  [[3,'Atlas, 실제 도입도 가능해 보이나요?'],[4,'충분합니다. 운영 계획만 보완하면 되겠어요.']],
+  [[0,'다들 데모 결과는 어떻게 봤나요?'],[2,'수치와 체감 효과가 모두 인상적이었어요.']],
+  [[1,'Atlas, 데이터 신뢰도는 충분할까요?'],[4,'검증 절차가 명확해서 신뢰할 만합니다.']],
+  [[2,'Ada, 보안 측면에서 우려는 없나요?'],[0,'민감 정보 처리만 보완하면 괜찮겠어요.']],
+  [[3,'Turing, 성과 지표가 설득력 있나요?'],[1,'네, 기존 방식과의 비교가 명확합니다.']],
+  [[4,'Grace, 차별점이 충분히 보이나요?'],[2,'핵심 기능에서 독창성이 확실히 드러나요.']],
+  [[0,'Nova, 도입 순서는 어떻게 잡으면 좋을까요?'],[3,'작은 조직에서 검증한 뒤 확장하면 좋겠어요.']],
+  [[1,'Atlas, 유지보수 부담은 어떨까요?'],[4,'구조가 단순해서 운영 부담도 낮아 보입니다.']]
+];
+const JUDGE_OFFSETS=[[-1.25,-0.1],[0,0],[1.3,0.15],[-0.65,1.15],[0.75,1.3]];
+const judgeGroup={state:'walk',timer:0,talk:2,lastBooth:-1,visited:new Set(),reply:null,lastLine:'',lastDialogue:-1,leaveAt:0};
+const judges=JUDGE_OFFSETS.map((_,i)=>{
+  const j={gx:HALL_W/2-1.2+i*0.6,gy:HALL_D-4,nick:'🧠 '+JUDGE_NAMES[i],color:['#6c5ce7','#8b5cf6','#a78bfa','#7c3aed','#5b21b6'][i],
+    head:'#e9e1ff',isJudge:1,speed:1.8+Math.random()*0.4,state:'walk',phase:i,moving:true,face:1,isPlayer:false,tx:0,ty:0};
+  npcs.push(j);return j;
+});
+function sendJudges(){
+  if(judgeGroup.visited.size>=BOOTHS.length)judgeGroup.visited.clear();
+  const cx=judges.reduce((s,j)=>s+j.gx,0)/judges.length,cy=judges.reduce((s,j)=>s+j.gy,0)/judges.length;
+  let bi=-1,nearest=Infinity;
+  BOOTHS.forEach((b,i)=>{
+    if(judgeGroup.visited.has(i)||(i===judgeGroup.lastBooth&&BOOTHS.length>1))return;
+    const d=dist(cx,cy,b.view.x,b.view.y);if(d<nearest){nearest=d;bi=i;}
+  });
+  if(bi<0){judgeGroup.visited.clear();bi=judgeGroup.lastBooth===0?1:0;}
+  judgeGroup.visited.add(bi);
+  judgeGroup.lastBooth=bi;judgeGroup.state='walk';judgeGroup.reply=null;judgeGroup.leaveAt=0;
+  const b=BOOTHS[bi];
+  judges.forEach((j,i)=>{
+    j.tx=b.view.x+JUDGE_OFFSETS[i][0]+(Math.random()-.5)*0.25;
+    j.ty=b.view.y+JUDGE_OFFSETS[i][1]+(Math.random()-.5)*0.2;j.moving=true;j.sayUntil=0;
+  });
+}
+sendJudges();
+
 /* 로봇청소기 — 통로를 쉼 없이 순회하며 청소. trail: 지나온 자리 반짝 자국 */
 const vac={gx:HALL_W/2+3,gy:HALL_D-4,isVac:true,speed:1.4,tx:0,ty:0,trail:[],trailT:0,face:1,moving:true,phase:0};
 {const p=randAisle();vac.tx=p.x;vac.ty=p.y;}
@@ -110,6 +162,7 @@ function update(dt,t){
   } else player.moving=false;
 
   for(const n of npcs){
+    if(n.isJudge)continue;
     if(n.state==='walk'){
       const dx=n.tx-n.gx,dy=n.ty-n.gy,dd=Math.hypot(dx,dy);
       if(dd<0.2){n.state='view';n.timer=2+Math.random()*3;n.moving=false;}
@@ -125,6 +178,42 @@ function update(dt,t){
     }
     g.tipT-=dt;
     if(g.tipT<=0){g.tipT=16;g.say=GUIDE_TIPS[g.tipI++%GUIDE_TIPS.length];g.sayUntil=t+6;g._sayLines=null;}
+  }
+  if(judgeGroup.state==='walk'){
+    let arrived=0,blocked=false;
+    for(const j of judges){
+      const dx=j.tx-j.gx,dy=j.ty-j.gy,dd=Math.hypot(dx,dy);
+      if(dd<0.2){j.moving=false;arrived++;continue;}
+      let mx=dx/dd,my=dy/dd;
+      for(const o of judges)if(o!==j){
+        const ox=j.gx-o.gx,oy=j.gy-o.gy,od=Math.hypot(ox,oy);
+        if(od>0&&od<0.85){const push=(0.85-od)*1.2;mx+=ox/od*push;my+=oy/od*push;}
+      }
+      const mm=Math.hypot(mx,my)||1,bx=j.gx,by=j.gy,sp=j.speed*dt;moveEnt(j,mx/mm*sp,my/mm*sp);
+      if(Math.abs(j.gx-bx)<1e-4&&Math.abs(j.gy-by)<1e-4)blocked=true;
+      j.moving=true;j.phase+=dt*10;if(Math.abs(dx)>0.01)j.face=dx>0?1:-1;
+    }
+    if(blocked)sendJudges();
+    else if(arrived===judges.length){judgeGroup.state='view';judgeGroup.timer=12+Math.random()*5;judgeGroup.talk=1+Math.random()*2;}
+  }else{
+    judgeGroup.timer-=dt;judgeGroup.talk-=dt;
+    if(judgeGroup.talk<=0&&(judgeGroup.timer>0||judgeGroup.reply)){
+      const replying=!!judgeGroup.reply;
+      let turn=judgeGroup.reply;
+      if(turn)judgeGroup.reply=null;
+      else if(Math.random()<0.5){
+        let di;do{di=(Math.random()*JUDGE_DIALOGUES.length)|0;}while(di===judgeGroup.lastDialogue);
+        judgeGroup.lastDialogue=di;const pair=JUDGE_DIALOGUES[di];turn=pair[0];judgeGroup.reply=pair[1];
+      }else{
+        let line;do{line=JUDGE_LINES[(Math.random()*JUDGE_LINES.length)|0];}while(line===judgeGroup.lastLine);
+        turn=[(Math.random()*judges.length)|0,line];
+      }
+      judgeGroup.lastLine=turn[1];
+      const j=judges[turn[0]];j.say=turn[1];j.sayUntil=t+4;j._sayLines=null;
+      if(replying)judgeGroup.leaveAt=t+4.5;
+      judgeGroup.talk=2.5+Math.random()*2;
+    }
+    if(judgeGroup.timer<=0&&!judgeGroup.reply&&t>=judgeGroup.leaveAt)sendJudges();
   }
   { // 로봇청소기 — NPC와 달리 멈추지 않고 통로 웨이포인트 연속 순회
     const dx=vac.tx-vac.gx,dy=vac.ty-vac.gy,dd=Math.hypot(dx,dy);
@@ -184,8 +273,26 @@ requestAnimationFrame(loop);
 /* ---------- 모달 ---------- */
 const modalBack=document.getElementById('modalBack'),modal=document.getElementById('modal');
 const AVA=['#3d7bff','#12b3a6','#6c5ce7','#e0872f','#e0533f'];
+function downloadBrochure(ex){
+  const people=ex.members.map(m=>`<li><b>${esc(m[0])}</b> · ${esc(m[1])}</li>`).join('');
+  const html=`<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+  <title>${esc(ex.title)} · 프로젝트 소개서</title><style>
+  body{max-width:800px;margin:50px auto;padding:0 28px;font:16px/1.7 Arial,sans-serif;color:#172033}
+  header{border-top:6px solid ${ex.accent};padding-top:28px}small{color:#64748b}h1{font-size:34px;line-height:1.2;margin:8px 0}
+  section{margin-top:36px}h2{font-size:18px;border-bottom:1px solid #dbe2ea;padding-bottom:8px}
+  .tags{display:flex;flex-wrap:wrap;gap:8px}.tags span{padding:5px 10px;border-radius:8px;background:#eef2ff}li{margin:6px 0}
+  </style><body><header><small>${esc(ex.code)} · ${esc(ex.trackName)} · ${esc(ex.award)}</small>
+  <h1>${esc(ex.title)}</h1><b>${esc(ex.team)}</b></header>
+  <section><h2>프로젝트 개요</h2><h3>${esc(ex.summary)}</h3><p>${esc(ex.desc)}</p></section>
+  <section><h2>핵심 기술</h2><div class="tags">${ex.tags.map(tag=>`<span>${esc(tag)}</span>`).join('')}</div></section>
+  <section><h2>팀 구성원</h2><ul>${people}</ul></section></body></html>`;
+  const url=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'})),a=document.createElement('a');
+  a.href=url;a.download=`${ex.code}-${ex.title.replace(/[\\/:*?"<>|]/g,'-')}-소개서.html`;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
 function openModal(ex){
   modalOpen=true;
+  modal.classList.add('exhibit-modal');
   const video=ex.videoUrl
     ?`<div class="video-box"><iframe src="https://www.youtube.com/embed/${ex.videoUrl}" allowfullscreen></iframe></div>`
     :`<div class="video-box"><div class="video-scan"></div><div class="video-ph"><div class="play"></div>데모 영상 준비 중<br/><span style="font-size:11px;opacity:.7">videoUrl에 유튜브 ID를 넣으면 재생됩니다</span></div></div>`;
@@ -200,16 +307,41 @@ function openModal(ex){
       <div class="m-title">${ex.title}</div>
       <div class="m-team">${ex.team}</div>
     </div>
-    <div class="m-body">
-      ${video}
-      <div class="m-summary">${ex.summary}</div>
-      <div class="m-desc">${ex.desc}</div>
-      <div class="m-grid">
-        <div><div class="m-sec-title">기술 · 키워드</div><div class="tags">${tags}</div></div>
-        <div><div class="m-sec-title">팀 구성원</div><div class="members">${members}</div></div>
-      </div>
+    <div class="m-body exhibit-body">
+      <section class="demo-panel"><div class="panel-bar"><span class="panel-label">DEMO VIDEO · 데모 영상</span></div>${video}</section>
+      <section class="project-panel">
+        <div class="panel-bar"><span class="panel-label">PROJECT STORY · 프로젝트 소개</span><button class="brochure-download" id="brochureDownload">↓ 상세 소개서</button></div>
+        <div class="project-slides">
+          <div class="project-slide on">
+            <div class="slide-kicker">01 · OVERVIEW</div><h3>프로젝트 개요</h3>
+            <div class="m-summary">${ex.summary}</div><div class="m-desc">${ex.desc}</div>
+          </div>
+          <div class="project-slide">
+            <div class="slide-kicker">02 · TECHNOLOGY</div><h3>핵심 기술</h3>
+            <div class="m-desc">프로젝트를 구현한 주요 기술과 키워드입니다.</div><div class="tags">${tags}</div>
+          </div>
+          <div class="project-slide">
+            <div class="slide-kicker">03 · TEAM</div><h3>팀 소개</h3>
+            <div class="members">${members}</div>
+          </div>
+          <div class="slide-nav">
+            <button id="slidePrev" aria-label="이전 소개 페이지">←</button>
+            <div class="slide-dots">${[0,1,2].map(i=>`<button class="${i?'':'on'}" data-slide="${i}" aria-label="${i+1}번 소개 페이지"></button>`).join('')}</div>
+            <span id="slidePage">1 / 3</span>
+            <button id="slideNext" aria-label="다음 소개 페이지">→</button>
+          </div>
+        </div>
+      </section>
     </div>`;
   showModalBack();document.getElementById('mClose').onclick=closeModal;
+  document.getElementById('brochureDownload').onclick=()=>downloadBrochure(ex);
+  const slides=[...modal.querySelectorAll('.project-slide')],dots=[...modal.querySelectorAll('[data-slide]')];let slide=0;
+  const slideTo=i=>{slide=clamp(i,0,slides.length-1);slides.forEach((el,n)=>el.classList.toggle('on',n===slide));
+    dots.forEach((el,n)=>el.classList.toggle('on',n===slide));document.getElementById('slidePage').textContent=(slide+1)+' / '+slides.length;
+    document.getElementById('slidePrev').disabled=slide===0;document.getElementById('slideNext').disabled=slide===slides.length-1;};
+  document.getElementById('slidePrev').onclick=()=>slideTo(slide-1);
+  document.getElementById('slideNext').onclick=()=>slideTo(slide+1);
+  dots.forEach(btn=>btn.onclick=()=>slideTo(+btn.dataset.slide));slideTo(0);
 }
 let closeTid=0;
 function showModalBack(){clearTimeout(closeTid);modalBack.classList.remove('closing');modalBack.classList.add('open');}
@@ -231,7 +363,7 @@ function spotHead(acc,tag,title,sub){
     <div class="m-team">${sub}</div>
   </div>`;
 }
-function openSpotModal(html){modalOpen=true;modal.innerHTML=html;showModalBack();document.getElementById('mClose').onclick=closeModal;}
+function openSpotModal(html){modalOpen=true;modal.classList.remove('exhibit-modal');modal.innerHTML=html;showModalBack();document.getElementById('mClose').onclick=closeModal;}
 
 /* 아이디어 월 — 서버 접속 시 서버(idea-notes.json)가 원본, localStorage는 오프라인 폴백 */
 let ideaNotes=null;
@@ -282,7 +414,8 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 let teamLikes=null,votedTeams=null;
 try{teamLikes=JSON.parse(localStorage.getItem('teamLikes'));}catch(e){}
 try{votedTeams=new Set(JSON.parse(localStorage.getItem('votedTeams')));}catch(e){}
-teamLikes=EXHIBITS.map((_,i)=>Math.max(0,+teamLikes?.[i]||0));
+const legacyLikes=Array.isArray(teamLikes)&&Math.max(0,...teamLikes)<50;
+teamLikes=EXHIBITS.map((ex,i)=>Math.max(0,+(Array.isArray(teamLikes)?teamLikes[i]:0)||0)+(legacyLikes||!Array.isArray(teamLikes)?ex.likes:0));
 if(!(votedTeams instanceof Set))votedTeams=new Set();
 function setTeamLikes(likes){
   teamLikes=EXHIBITS.map((_,i)=>Math.max(0,+likes?.[i]||0));
@@ -292,8 +425,14 @@ function setTeamLikes(likes){
 function paintTeamRanks(){
   const el=document.getElementById('teamRankList');if(!el)return;
   const ranked=EXHIBITS.map((ex,i)=>({ex,likes:teamLikes[i]})).sort((a,b)=>b.likes-a.likes||a.ex.id-b.ex.id);
+  document.getElementById('teamLikeTotal').textContent=teamLikes.reduce((a,b)=>a+b,0).toLocaleString();
+  document.getElementById('teamVoteCount').textContent=votedTeams.size;
+  document.getElementById('teamPodium').innerHTML=[ranked[1],ranked[0],ranked[2]].map((r,i)=>{
+    const rank=[2,1,3][i];
+    return `<div class="podium p${rank}" style="--team:${r.ex.accent}"><span>${rank===1?'🏆':rank===2?'🥈':'🥉'}</span><b>${esc(r.ex.team)}</b><small>${esc(r.ex.title)}</small><strong>♥ ${r.likes}</strong></div>`;
+  }).join('');
   el.innerHTML=ranked.map((r,i)=>`<div class="team-rank-row">
-    <span class="team-rk">${i+1}</span><span class="team-rank-name"><b>${esc(r.ex.team)}</b><small>${esc(r.ex.title)}</small></span>
+    <span class="team-rk">${i+1}</span><span class="team-track" style="color:${r.ex.accent};border-color:${hexA(r.ex.accent,0.35)}">${r.ex.code}</span><span class="team-rank-name"><b>${esc(r.ex.team)}</b><small>${esc(r.ex.title)}</small></span>
     <span class="team-likes">♥ ${r.likes}</span><button data-vote="${r.ex.id}"${votedTeams.has(r.ex.id)?' disabled':''}>${votedTeams.has(r.ex.id)?'✓ 투표함':'투표'}</button>
   </div>`).join('');
   el.querySelectorAll('[data-vote]').forEach(btn=>btn.onclick=()=>voteTeam(+btn.dataset.vote));
@@ -308,7 +447,12 @@ function voteTeam(id){
 function openRanking(){
   const acc='#e0533f';
   openSpotModal(spotHead(acc,'TEAM RANKING · 실시간 투표','팀 랭킹','마음에 든 프로젝트에 좋아요를 눌러 응원하세요')+
-    `<div class="m-body"><div class="team-rank-list" id="teamRankList"></div></div>`);
+    `<div class="m-body">
+      <div class="team-rank-summary"><div><strong id="teamLikeTotal">0</strong><span>총 좋아요</span></div><div><strong>20</strong><span>참가 팀</span></div><div><strong id="teamVoteCount">0</strong><span>내 투표</span></div></div>
+      <div class="team-podium" id="teamPodium"></div>
+      <div class="m-sec-title">전체 순위 · 팀별 한 번씩 투표할 수 있어요</div>
+      <div class="team-rank-list" id="teamRankList"></div>
+    </div>`);
   paintTeamRanks();
 }
 function paintRanks(){

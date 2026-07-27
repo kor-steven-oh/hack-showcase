@@ -23,7 +23,7 @@ file:// 로 열면 `net.js`가 조용히 오프라인 모드로 남고 나머지
 | `data.js` | 트랙 5개 + seeded PRNG 샘플 부스 20개 | `TRACKS`, `EXHIBITS` |
 | `world.js` | 아이소메트릭 수학, 홀 지오메트리, 배치, 충돌 | `w2s()`, `BOOTHS`, `ZONES`, `DECOR`, `FLOOR`/`WALLS`, `walkable()` |
 | `render.js` | 모든 `draw*`, 전광판 타자기, 미니맵, `render()` | `MAX_VISIBLE_REMOTES` |
-| `main.js` | 엔티티(player/NPC 50/도슨트 4/청소기), 입력, `update()`, rAF 루프, 모달, 미니게임, 채팅 | `player`, `npcs`, `CHARS` |
+| `main.js` | 엔티티(player/NPC 50/도슨트 4/AI 심사위원 5/청소기), 입력, `update()`, rAF 루프, 모달, 미니게임, 채팅 | `player`, `npcs`, `CHARS` |
 | `net.js` | WS 클라이언트, 원격 사용자 보간, 동기화 | `NET` |
 
 섹션 구분은 `/* ---------- 섹션명 ---------- */` 주석 — 상세는 CLAUDE.md 참고.
