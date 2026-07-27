@@ -10,7 +10,7 @@
      theme.js → data.js → world.js → render.js → main.js → net.js
                                                               │ WebSocket (선택)
 server.js ────────────────────────────────────────────────────┘
- 정적 서빙 + WS 중계 (포트 3210) · idea-notes.json / reaction-scores.json 영속화
+ 정적 서빙 + WS 중계 (포트 3210) · idea-notes.json / reaction-scores.json / team-likes.json 영속화
 ```
 
 file:// 로 열면 `net.js`가 조용히 오프라인 모드로 남고 나머지는 전부 동작한다.
@@ -23,8 +23,8 @@ file:// 로 열면 `net.js`가 조용히 오프라인 모드로 남고 나머지
 | `data.js` | 트랙 5개 + seeded PRNG 샘플 부스 20개 | `TRACKS`, `EXHIBITS` |
 | `world.js` | 아이소메트릭 수학, 홀 지오메트리, 배치, 충돌 | `w2s()`, `BOOTHS`, `ZONES`, `DECOR`, `FLOOR`/`WALLS`, `walkable()` |
 | `render.js` | 모든 `draw*`, 전광판 타자기, 미니맵, `render()` | `MAX_VISIBLE_REMOTES` |
-| `main.js` | 엔티티(player/NPC 50/도슨트 4/AI 심사위원 5/청소기), 입력, `update()`, rAF 루프, 모달, 미니게임, 채팅 | `player`, `npcs`, `CHARS` |
-| `net.js` | WS 클라이언트, 원격 사용자 보간, 동기화 | `NET` |
+| `main.js` | 엔티티(player/NPC 50/도슨트 4/AI 심사위원 5/청소기), 입력, `update()`, rAF 루프, 모달, 미니게임, 실제·더미 채팅 | `player`, `npcs`, `CHARS` |
+| `net.js` | WS 클라이언트, 원격 사용자 보간·동기화, 실제 접속자 수 계산 | `NET` |
 
 섹션 구분은 `/* ---------- 섹션명 ---------- */` 주석 — 상세는 CLAUDE.md 참고.
 
@@ -56,6 +56,8 @@ gameStart → gameGo → score(서버가 시간 측정·검증) → ranks   (gam
 vote(팀 id) → likes(20개 팀 누적 좋아요)
 ```
 
+`net.js`의 `remotes`는 AOI 활성 여부와 별개로 전체 입퇴장 목록을 유지한다. `NET.userCount()`는 이 목록으로 본인을 포함한 실제 접속자 수를 제공하며, 연결 중에는 더미 채팅을 보류한다.
+
 ### 위치 동기화 (500명 대비 설계)
 
 - 서버: 12×12 타일 공간 셀 AOI. 현재 셀 + 인접 8셀 대상, 혼잡 시 가까운 150명 상한(`MAX_AOI_USERS`), 5초마다 전체 상태 보정(이탈 사용자 정리), `bufferedAmount ≥ 256KiB`면 스냅샷 생략.
@@ -66,7 +68,7 @@ vote(팀 id) → likes(20개 팀 누적 좋아요)
 
 ### 서버 가드
 
-400(잘못된 URL), 30초 ping/pong, 메시지 레이트 리밋, 4KB 페이로드 상한, 백프레셔. 노트·랭킹은 250ms debounce로 JSON 파일 저장 (gitignore).
+400(잘못된 URL), 30초 ping/pong, 메시지 레이트 리밋, 4KB 페이로드 상한, 백프레셔. 메시지 월·게임 랭킹·팀 좋아요는 250ms debounce로 JSON 파일 저장 (gitignore).
 
 ## 영속화
 
@@ -74,4 +76,4 @@ vote(팀 id) → likes(20개 팀 누적 좋아요)
 
 ## 테스트
 
-`node test-network.js` — WS 근거리 스냅샷 수신, full snapshot 기반 AOI 이탈 정리, 클라이언트 활성 목록 갱신·재접속 검증.
+`node test-network.js` — WS 근거리 스냅샷 수신, full snapshot 기반 AOI 이탈 정리, 활성 목록·재접속·접속자 수·팀 투표 검증과 AI 심사위원/프로젝트 모달/더미 채팅 설정 검사.
