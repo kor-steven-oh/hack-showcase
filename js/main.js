@@ -101,17 +101,29 @@ const CHARS=[player,...npcs,vac]; // 렌더 depth 병합용 — 멤버 고정, �
 /* ---------- 입력 ---------- */
 const keys={};
 const K_UP=['w','ArrowUp'],K_DOWN=['s','ArrowDown'],K_LEFT=['a','ArrowLeft'],K_RIGHT=['d','ArrowRight'];
-let started=false,activeBooth=null,activeSpot=null,modalOpen=false;
+let started=false,activeBooth=null,activeSpot=null,hoverBooth=null,hoverSpot=null,modalOpen=false;
 /* 상호작용 스팟(act) 라우팅 — DECOR의 act 키와 1:1 */
-function actSpot(){
-  if(!activeSpot)return;
-  const a=activeSpot.act;
+function actSpot(spot=activeSpot){
+  if(!spot)return;
+  const a=spot.act;
   if(a==='game')openGame();
   else if(a==='idea')openIdea();
   else if(a==='info')openInfo();
   else if(a==='ranking')openRanking();
 }
 function interact(){if(activeBooth)openModal(activeBooth.ex);else actSpot();}
+function hitPanel(clientX,clientY){
+  const x=clientX-camX,y=clientY-camY;
+  for(const b of BOOTHS)if(Math.abs(x-b.sx)<=48&&y>=b.sy-188&&y<=b.sy-22)return{booth:b};
+  for(const d of DECOR)if(d.type==='board'&&d.act&&Math.abs(x-d.sx)<=79&&y>=d.sy-116&&y<=d.sy-20)return{spot:d};
+  return null;
+}
+let mouseX=0,mouseY=0,mouseInside=false;
+function updatePanelHover(){
+  const hit=mouseInside&&started&&!modalOpen?hitPanel(mouseX,mouseY):null;
+  hoverBooth=hit?.booth||null;hoverSpot=hit?.spot||null;
+  const cursor=hit?'pointer':'default';if(cv.style.cursor!==cursor)cv.style.cursor=cursor;
+}
 addEventListener('keydown',e=>{
   if(e.target&&(e.target.tagName==='INPUT'||e.target.isContentEditable))return;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();
@@ -123,8 +135,12 @@ addEventListener('keydown',e=>{
   if(k==='Escape'&&modalOpen)closeModal();
 });
 addEventListener('keyup',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;keys[k]=false;});
-cv.addEventListener('click',e=>{ // 클릭 지점으로 이동 — 모달 오픈은 Space/액션 버튼 전용
+cv.addEventListener('mousemove',e=>{mouseX=e.clientX;mouseY=e.clientY;mouseInside=true;updatePanelHover();});
+cv.addEventListener('mouseleave',()=>{mouseInside=false;updatePanelHover();});
+cv.addEventListener('click',e=>{ // 패널 클릭은 관람, 나머지는 기존 클릭 이동
   if(!started||modalOpen)return;
+  const hit=hitPanel(e.clientX,e.clientY);
+  if(hit){player.tgt=null;if(hit.booth)openModal(hit.booth.ex);else actSpot(hit.spot);return;}
   const a=2*(e.clientX-camX)/TW, b=2*(e.clientY-camY)/TH; // w2s 역변환 (렌더는 translate(camX,camY))
   player.tgt={x:clamp((a+b)/2,1.4,HALL_W-2.6),y:clamp((b-a)/2,1.4,HALL_D-1.8)};
 });
@@ -239,7 +255,8 @@ function update(dt,t){
   for(const g of guides){const gd=dist(player.gx,player.gy,g.gx,g.gy);
     if(gd<ab){ab=gd;activeSpot=g;}} // 도슨트도 안내 스팟 — actSpot의 'info' 라우팅 재사용
   if(activeBooth&&activeSpot){if(best<=ab)activeSpot=null;else activeBooth=null;} // 겹치면 더 가까운 쪽 — 부스가 도슨트/스팟을 가리지 않게
-  for(const b of BOOTHS)b.glow=lerp(b.glow,(b===activeBooth?1:0.28),0.18);
+  updatePanelHover();
+  for(const b of BOOTHS)b.glow=lerp(b.glow,(b===activeBooth||b===hoverBooth?1:0.28),0.18);
 
   let lbl='이동 통로',col='#4d8bff';
   if(player.gy>=HALL_D-3){lbl='입구 · Entrance';col='#4d8bff';}

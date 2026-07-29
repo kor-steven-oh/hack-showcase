@@ -54,6 +54,12 @@ function testJudgePanelConfig(){
   assert.equal((ambient.match(/^\s*'/gm)||[]).length,50);
   assert(source.includes("NET.userCount()<10"));
   assert(source.includes('ambientChatCount>=AMBIENT_CHAT.length'));
+  const hitSource=source.match(/function hitPanel[\s\S]*?^}/m)[0];
+  const hitContext={camX:20,camY:30,BOOTHS:[{sx:100,sy:200}],DECOR:[{type:'board',act:'idea',sx:300,sy:200}]};
+  vm.runInNewContext(hitSource,hitContext);
+  assert.equal(hitContext.hitPanel(120,100).booth,hitContext.BOOTHS[0]);
+  assert.equal(hitContext.hitPanel(320,130).spot,hitContext.DECOR[0]);
+  assert.equal(hitContext.hitPanel(500,500),null);
 }
 
 const wait=(ms)=>new Promise(r=>setTimeout(r,ms));

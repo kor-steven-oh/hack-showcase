@@ -203,9 +203,9 @@ function drawBillboard(d,t){
 /* 상호작용 말풍선 (E/Space 안내) — 부스 외 스팟 공용 */
 const ACT_TXT={game:'게임하기',idea:'메시지 남기기',info:'안내 보기',ranking:'랭킹·투표 보기'};
 const ACT_CLR={idea:'#21a17a',info:'#1428a0',ranking:'#e0533f'};
-function actBubble(x,yTop,act,t,color){
+function actBubble(x,yTop,act,t,color,click){
   const py=yTop-Math.sin(t*3)*2,c=color||ACT_CLR[act]||'#1428a0';
-  const label='▶ '+ACT_TXT[act]+' · Space';
+  const label='▶ '+ACT_TXT[act]+' · '+(click?'클릭':'Space');
   ctx.font='700 12px Pretendard';const lw=txtW(label)+22;
   roundRect(x-lw/2,py-12,lw,24,12,c);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(label,x,py);
   ctx.beginPath();ctx.moveTo(x-5,py+12);ctx.lineTo(x+5,py+12);ctx.lineTo(x,py+18);ctx.closePath();ctx.fillStyle=c;ctx.fill();
@@ -262,7 +262,9 @@ function drawTable(d){
 function drawBoard(d,t){
   const x=d.sx,y=d.sy;if(cull(x,y-130))return;
   const w=150,h=88,top=y-24-h;
+  const hot=d===activeSpot||d===hoverSpot;
   ctx.fillStyle=P.bannerFrame;ctx.fillRect(x-w/2+10,y-24,6,24);ctx.fillRect(x+w/2-16,y-24,6,24);
+  if(hot)halo(x-w/2-4,top-4,w+8,h+8,6,ACT_CLR[d.act]||'#1428a0',d===hoverSpot?1:0.7);
   roundRect(x-w/2-4,top-4,w+8,h+8,6,P.bannerFrame);
   roundRect(x-w/2,top,w,h,4,'#f2efe6');
   const ranking=d.act==='ranking';
@@ -283,7 +285,7 @@ function drawBoard(d,t){
       ctx.beginPath();ctx.moveTo(nx+4,ny+6);ctx.lineTo(nx+20,ny+6);ctx.moveTo(nx+4,ny+10);ctx.lineTo(nx+14,ny+10);ctx.stroke();
     }
   }
-  if(d===activeSpot)actBubble(x,top-16,d.act,t);
+  if(hot)actBubble(x,top-16,d.act,t,null,d===hoverSpot);
 }
 
 function drawChair(d){
@@ -477,9 +479,9 @@ function drawBooth(b,t){
   roundRectPath(x-26,hy-10,52,18,4);ctx.strokeStyle=hexA(acc,0.5);ctx.lineWidth=1.5;ctx.stroke();
   ctx.fillStyle=P.ink;ctx.font='800 10px Pretendard';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(b.code,x,hy-1);
   ctx.restore();
-  if(b===activeBooth){
+  if(b===activeBooth||b===hoverBooth){
     const py=hy-24-Math.sin(t*3)*2;ctx.save();ctx.globalAlpha=Math.min(1,b.glow+0.2);
-    const label='▶ 관람하기 · Space';ctx.font='700 12px Pretendard';const w=txtW(label)+22;
+    const label='▶ 관람하기 · '+(b===hoverBooth?'클릭':'Space');ctx.font='700 12px Pretendard';const w=txtW(label)+22;
     roundRect(x-w/2,py-12,w,24,12,'#1428a0');ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(label,x,py);
     ctx.beginPath();ctx.moveTo(x-5,py+12);ctx.lineTo(x+5,py+12);ctx.lineTo(x,py+18);ctx.closePath();ctx.fillStyle='#1428a0';ctx.fill();ctx.restore();
   }
