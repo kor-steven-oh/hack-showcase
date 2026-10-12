@@ -162,7 +162,37 @@ let padVec={x:0,y:0}, actBtn=null;
 /* ---------- 업데이트 ---------- */
 let camX=0,camY=0,initCam=true;
 const zoneTxt=document.getElementById('zoneTxt'),zonePill=document.getElementById('zonePill');
+// 가까운 라운지 한 곳에서만 짧은 문답. 전체 채팅이나 서버로 보내지 않는다.
+const loungeWorkers=ZONES.map((_,i)=>DECOR.filter(d=>d.type==='sitter'&&d.working&&d.track===i));
+const loungeChat={wait:4,track:-1,turn:0,rounds:ZONES.map(()=>0),speaker:null,text:'',left:0};
+function updateLoungeChat(dt){
+  if(!started||modalOpen){loungeChat.speaker=null;loungeChat.track=-1;loungeChat.wait=4;return;}
+  const nearby=ZONES.findIndex(z=>dist(player.gx,player.gy,z.cx-2,z.cy+4)<8);
+  if(nearby<0||nearby!==loungeChat.track&&loungeChat.speaker){
+    loungeChat.speaker=null;loungeChat.track=-1;loungeChat.wait=4;
+  }
+  if(nearby<0)return;
+  if(loungeChat.speaker){
+    loungeChat.left-=dt;if(loungeChat.left>0)return;
+    if(loungeChat.turn===0){
+      loungeChat.turn=1;
+      const round=loungeChat.rounds[nearby],lines=LOUNGE_ACTIVITY[nearby].dialogues;
+      loungeChat.speaker=loungeWorkers[nearby][(round*2+1)%6];
+      loungeChat.text=lines[round%lines.length][1];loungeChat.left=3.5;
+    }else{
+      loungeChat.speaker=null;loungeChat.rounds[nearby]++;loungeChat.wait=8;
+    }
+    return;
+  }
+  loungeChat.wait-=dt;if(loungeChat.wait>0)return;
+  const round=loungeChat.rounds[nearby],lines=LOUNGE_ACTIVITY[nearby].dialogues;
+  loungeChat.track=nearby;loungeChat.turn=0;
+  loungeChat.speaker=loungeWorkers[nearby][(round*2)%6];
+  loungeChat.text=lines[round%lines.length][0];loungeChat.left=3.5;
+}
+
 function update(dt,t){
+  updateLoungeChat(dt);
   if(started&&!modalOpen){
     let h=(down(K_RIGHT)?1:0)-(down(K_LEFT)?1:0)+padVec.x, v=(down(K_DOWN)?1:0)-(down(K_UP)?1:0)+padVec.y;
     h=clamp(h,-1,1);v=clamp(v,-1,1);

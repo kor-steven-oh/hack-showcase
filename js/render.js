@@ -242,6 +242,7 @@ function drawSofa(d){
   const[fx,fy]=o(-24,3*s);isoBox(fx,fy,4.5,6.5,17,dir,c);        // 팔걸이(먼쪽)
   const[sx,sy]=o(0,3*s);isoBox(sx,sy,19.5,6.5,11,dir,c);         // 좌판
   const[nx,ny]=o(24,3*s);isoBox(nx,ny,4.5,6.5,17,dir,c);         // 팔걸이(가까운쪽)
+  if(d.cushion){const[a,b]=o(13,0);isoBox(a,b-11,5,3,8,dir,P.cafeCream);}
   if(s<0)back();                                                 // 등받이가 가까운쪽이면 마지막
   else{const m1=o(0,-3.5),m2=o(0,9.5);
     ctx.strokeStyle='rgba(0,0,0,0.22)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(m1[0],m1[1]-11);ctx.lineTo(m2[0],m2[1]-11);ctx.stroke();} // 쿠션 이음선
@@ -249,6 +250,7 @@ function drawSofa(d){
 
 function drawTable(d){
   const x=d.sx,y=d.sy;if(cull(x,y-40))return;
+  ctx.save();if(d.low){ctx.translate(0,y*0.4);ctx.scale(1,0.6);}
   ctx.save();ctx.translate(x,y);ctx.scale(1,0.5);ctx.fillStyle=P.charShadow;ctx.beginPath();ctx.arc(0,0,16,0,Math.PI*2);ctx.fill();ctx.restore();
   ctx.save();ctx.translate(x,y);ctx.scale(1,0.5);ctx.fillStyle='#4e3520';ctx.beginPath();ctx.arc(0,0,6,0,Math.PI*2);ctx.fill();ctx.restore(); // 받침
   ctx.fillStyle='#6b4f36';ctx.fillRect(x-2.5,y-24,5,24);
@@ -256,6 +258,8 @@ function drawTable(d){
   ctx.save();ctx.translate(x,y-26);ctx.scale(1,0.5);
   ctx.fillStyle='#a97c50';ctx.beginPath();ctx.arc(0,0,17,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='rgba(255,255,255,0.15)';ctx.beginPath();ctx.arc(0,-2,13,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+  if(d.cafe)drawCoffee(x,y-27);
   ctx.restore();
 }
 
@@ -302,30 +306,392 @@ function drawChair(d){
 function drawLongtable(d){ // 긴 테이블 — 아이소 축 정렬, 양쪽 착석용
   const x=d.sx,y=d.sy;if(cull(x,y-40))return;
   const dir=(d.sk||0.5)<0?-1:1,o=isoO(x,y,dir);
-  shadowIso(x,y,42,13,dir);
+  const hw=d.lounge!==undefined?68:38,hd=d.lounge!==undefined?28:9;
+  shadowIso(x,y,hw+4,hd+4,dir);
   ctx.fillStyle='#6b4f36';
-  for(const[du,dv]of[[-32,-6],[-32,6],[32,-6],[32,6]]){const[lx,ly]=o(du,dv);ctx.fillRect(lx-2,ly-19,4,19);}
-  isoBox(x,y-19,38,9,5,dir,'#a97c50'); // 상판(다리 위)
+  for(const[du,dv]of[[-hw+6,-hd+3],[-hw+6,hd-3],[hw-6,-hd+3],[hw-6,hd-3]]){const[lx,ly]=o(du,dv);ctx.fillRect(lx-2,ly-19,4,19);}
+  isoBox(x,y-19,hw,hd,5,dir,'#a97c50'); // 상판(다리 위)
+  if(d.cafe){const[a,b]=o(-19,0),[c,e]=o(19,0);drawCoffee(a,b-25);drawCoffee(c,e-25);}
+  if(d.lounge!==undefined)drawLoungeProps(x,y-25,dir,d.lounge);
+}
+
+// 트랙 라운지 소품: 상판 위 좌표로 그려 가구와 함께 깊이 정렬한다.
+function drawLoungeProps(x,y,dir,track){
+  const o=isoO(x,y,dir),c=TRACKS[track].accent;
+  // 서로 마주 보는 두 줄, 각 3대. 먼쪽 노트북은 화면 뒷면이 보인다.
+  for(const dv of [-16,16])for(const du of [-40,0,40]){
+    const[lx,ly]=o(du,dv),[sx,sy]=o(du,dv+(dv<0?5:-5));
+    isoBox(lx,ly,10,6,1,dir,P.cafeMetal);
+    ctx.save();ctx.translate(sx,sy-1);ctx.transform(1,0.5*dir,0,1,0,0);
+    roundRect(-10,-15,20,15,2,dv<0?P.cafeMetal:P.cafeMenu);
+    ctx.fillStyle=dv<0?P.cafeCream:c;
+    if(dv<0){ctx.beginPath();ctx.arc(0,-8,2,0,Math.PI*2);ctx.fill();}
+    else{ctx.fillRect(-7,-12,14,2);ctx.fillRect(-7,-8,9,1);ctx.fillRect(-7,-4,11,1);}
+    ctx.restore();
+  }
+}
+
+function drawSideTable(d){
+  const x=d.sx,y=d.sy;if(cull(x,y-40))return;
+  shadowIso(x,y,13,10,1);
+  isoBox(x,y,6,5,14,1,P.cafeWood);
+  isoBox(x,y-14,12,9,3,1,P.cafeCream);
+  if(d.track%2===0)drawCoffee(x,y-18);
+  else{
+    isoBox(x,y-17,4,3,6,1,P.cafePot);
+    ctx.strokeStyle=P.cafeGreen;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y-23);ctx.lineTo(x,y-34);ctx.stroke();
+    ctx.fillStyle=P.cafeGreen;ctx.beginPath();ctx.ellipse(x-4,y-30,5,2,0.5,0,Math.PI*2);ctx.ellipse(x+4,y-34,5,2,-0.5,0,Math.PI*2);ctx.fill();
+  }
+}
+
+function drawLoungeCabinet(d){
+  const x=d.sx,y=d.sy;if(cull(x,y-80))return;
+  const c=TRACKS[d.track].accent,o=isoO(x,y,1),books=d.track>=3;
+  shadowIso(x,y,29,12,1);
+  if(books){
+    isoBox(x,y,26,9,43,1,P.cafeWood);
+    const[fx,fy]=o(0,9);
+    ctx.save();ctx.translate(fx,fy);ctx.transform(1,0.5,0,1,0,0);
+    ctx.fillStyle=P.cafeMenu;ctx.fillRect(-23,-39,46,34);
+    for(let row=0;row<2;row++)for(let k=0;k<7;k++){
+      const h=10+(k*3+row)%5,xx=-20+k*6,yy=-7-row*17;
+      ctx.fillStyle=[c,P.cafeCream,P.cafePot,P.cafeMetal][(k+row)%4];ctx.fillRect(xx,yy-h,4,h);
+      ctx.fillStyle=P.cafeCream;ctx.fillRect(xx+1,yy-h+3,2,1);
+    }
+    ctx.fillStyle=P.cafeWood;ctx.fillRect(-24,-23,48,3);ctx.restore();
+    // 책장 위 눕혀 둔 자료집
+    isoBox(x,y-43,10,6,2,1,c);isoBox(x,y-45,9,5,1,1,P.cafeCream);
+  }else{
+    isoBox(x,y,26,9,20,1,P.cafeMetal);isoBox(x,y-20,29,12,3,1,P.cafeCream);
+    if(d.track===0){ // 오실로스코프: 파형 화면과 조작 다이얼
+      isoBox(x,y-23,18,7,23,1,P.cafeMetal);
+      const[fx,fy]=o(0,7);ctx.save();ctx.translate(fx,fy-23);ctx.transform(1,0.5,0,1,0,0);
+      ctx.fillStyle=P.cafeMenu;ctx.fillRect(-15,-20,22,16);
+      ctx.strokeStyle=c;ctx.lineWidth=1.5;ctx.beginPath();
+      for(let j=0;j<=18;j++){const yy=-12+Math.sin(j*0.65)*4;j?ctx.lineTo(-13+j,yy):ctx.moveTo(-13+j,yy);}ctx.stroke();
+      ctx.fillStyle=P.cafeCream;for(const yy of [-16,-7]){ctx.beginPath();ctx.arc(12,yy,2.5,0,Math.PI*2);ctx.fill();}ctx.restore();
+    }else if(d.track===1){ // 품질 검사 현미경: 받침, 재물대, 대물렌즈, 접안부
+      isoBox(x,y-23,14,8,3,1,P.cafeMetal);
+      isoBox(x+8,y-26,3,3,28,1,c);
+      isoBox(x,y-36,11,6,2,1,P.cafeMenu);
+      isoBox(x,y-38,3,3,14,1,P.cafeMetal);
+      isoBox(x+3,y-52,8,4,4,1,c);
+      isoBox(x-5,y-54,3,3,7,1,P.cafeMenu);
+      isoBox(x,y-38,5,3,1,1,P.cafeGlassEdge);
+    }else{ // 설비 진단 스테이션: 제어함과 소형 센서
+      const[a,b]=o(-10,0);isoBox(a,b-23,10,7,24,1,P.cafeMenu);
+      const[fx,fy]=o(-10,7);ctx.save();ctx.translate(fx,fy-23);ctx.transform(1,0.5,0,1,0,0);
+      ctx.fillStyle=c;ctx.fillRect(-7,-20,14,7);ctx.fillStyle=P.cafeCream;
+      for(let j=0;j<3;j++)ctx.fillRect(-6+j*5,-8,2,2);ctx.restore();
+      const[a2,b2]=o(17,0);isoBox(a2,b2-23,5,5,7,1,P.cafeMetal);isoBox(a2,b2-30,2,2,12,1,c);
+      ctx.strokeStyle=P.cafeCoffee;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(a+8,b-24);ctx.quadraticCurveTo(x+6,y-10,a2,b2-23);ctx.stroke();
+    }
+  }
+}
+
+function drawTaskBoard(d){
+  const x=d.sx,y=d.sy;if(cull(x,y-110))return;
+  const c=TRACKS[d.track].accent,dir=d.sk<0?-1:1,o=isoO(x,y,dir);
+  ctx.save();ctx.translate(x,y);ctx.scale(2/3,2/3);ctx.translate(-x,-y);
+  shadowIso(x,y,67,12,dir);
+  // 소파와 같은 바닥 축을 따르는 받침과 두께 있는 프레임.
+  for(const u of [-53,53]){
+    const[a,b]=o(u,0);isoBox(a,b,3,10,3,dir,P.cafeMetal);
+    isoBox(a,b-3,2,2,28,dir,P.cafeWood);
+  }
+  isoBox(x,y-30,66,3,64,dir,P.cafeWood);
+  const[fx,fy]=o(0,3);
+  ctx.save();ctx.translate(fx,fy);ctx.transform(1,0.5*dir,0,1,0,0);
+  roundRect(-63,-91,126,58,2,P.cafeCream);
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='800 7px Pretendard';
+  ctx.fillStyle=P.cafeMenu;ctx.fillText(TRACKS[d.track].code+' · SPRINT BOARD',0,-82);
+  const tasks=LOUNGE_ACTIVITY[d.track].tasks;
+  for(let k=0;k<3;k++){
+    const xx=-42+k*42;
+    ctx.fillStyle=P.cafeMenu;ctx.font='700 7px Pretendard';ctx.fillText(['TODO','DOING','DONE'][k],xx,-68);
+    roundRect(xx-19,-61,38,21,2,k===1?c:P.cafeMetal);
+    ctx.fillStyle=P.cafeCream;ctx.font='700 7px Pretendard';ctx.fillText(tasks[k],xx,-50);
+  }
+  ctx.restore();
+  ctx.restore();
+}
+
+function drawLoungeChat(){
+  const d=loungeChat.speaker;if(!d||cull(d.sx,d.sy-100))return;
+  const x=d.sx,y=d.sy-82;
+  ctx.font='600 11px Pretendard';const w=txtW(loungeChat.text)+22;
+  roundRect(x-w/2,y-17,w,27,8,P.panel);
+  ctx.strokeStyle=TRACKS[d.track].accent;ctx.lineWidth=1;roundRectPath(x-w/2,y-17,w,27,8);ctx.stroke();
+  ctx.fillStyle=P.panel;ctx.beginPath();ctx.moveTo(x-4,y+10);ctx.lineTo(x,y+16);ctx.lineTo(x+4,y+10);ctx.fill();
+  ctx.fillStyle=P.ink;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(loungeChat.text,x,y-3);
+}
+
+function drawBag(d){
+  const x=d.sx,y=d.sy;if(cull(x,y-25))return;
+  const c=TRACKS[d.track].accent;
+  shadowIso(x,y,10,7,1);
+  ctx.strokeStyle=P.cafeWood;ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x+4,y-11,6,9,0.2,0,Math.PI*2);ctx.stroke();
+  isoBox(x,y,7,5,17,1,c);isoBox(x-4,y+2,5,2,9,1,P.cafeMenu);
+  ctx.strokeStyle=P.cafeCream;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x-8,y-6);ctx.lineTo(x,y-2);ctx.stroke();
+  ctx.strokeStyle=P.cafeMenu;ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y-17,3,Math.PI,0);ctx.stroke();
+}
+
+function drawMerchTable(d){
+  const x=d.sx,y=d.sy;if(cull(x,y-100))return;
+  const o=isoO(x,y,1);
+  shadowIso(x,y,58,18,1);
+  ctx.fillStyle=P.cafeWood;
+  for(const[du,dv]of[[-46,-10],[46,-10],[-46,10],[46,10]]){const[a,b]=o(du,dv);ctx.fillRect(a-2,b-25,4,25);}
+  isoBox(x,y-25,53,15,4,1,P.cafeCream);
+  // 다섯 트랙 스티커가 담긴 낮은 트레이
+  const[tx,ty]=o(-26,0);isoBox(tx,ty-29,22,10,2,1,P.cafeWood);
+  for(let i=0;i<5;i++){
+    const[a,b]=o(-43+i*8,0);isoBox(a,b-31,3,5,1,1,P.cafeCream);
+    ctx.fillStyle=TRACKS[i].accent;ctx.beginPath();ctx.ellipse(a,b-33,2.5,1.5,0,0,Math.PI*2);ctx.fill();
+  }
+  // 접어 둔 티셔츠와 손잡이가 보이는 에코백
+  const[fx,fy]=o(10,0);isoBox(fx,fy-29,10,8,4,1,P.cafeGreen);isoBox(fx,fy-33,10,8,3,1,P.cafeCream);
+  ctx.fillStyle=P.cafeGreen;ctx.font='800 6px Pretendard';ctx.textAlign='center';ctx.fillText('AI',fx,fy-38);
+  const[bx,by]=o(37,0);isoBox(bx,by-29,8,5,15,1,P.cafeCream);
+  ctx.strokeStyle=P.cafeWood;ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(bx,by-45,5,Math.PI,0);ctx.stroke();
+  // 테이블 아래 여분의 굿즈 상자
+  const[cx,cy]=o(22,2);isoBox(cx,cy,12,8,13,1,P.cafeWood);
+  ctx.fillStyle=P.cafeCream;ctx.fillRect(cx-2,cy-13,4,9);
+  roundRect(x-60,y-88,120,20,4,P.cafeMenu);
+  ctx.fillStyle=P.cafeCream;ctx.font='800 10px Pretendard';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('GOODS & STICKERS',x,y-78);
+}
+
+function drawSnackTable(d){
+  const x=d.sx,y=d.sy;if(cull(x,y-64))return;
+  const c=TRACKS[d.track].accent,o=isoO(x,y,1);
+  shadowIso(x,y,32,15,1);
+  ctx.fillStyle=P.cafeWood;
+  for(const[du,dv]of[[-24,-8],[24,-8],[-24,8],[24,8]]){
+    const[a,b]=o(du,dv);ctx.fillRect(a-2,b-24,4,24);
+  }
+  // 하단 선반에는 여분의 간식 상자, 상판은 밝은 트레이 테이블
+  isoBox(x,y-6,27,11,2,1,P.cafeWood);
+  const[bx,by]=o(5,1);isoBox(bx,by-8,12,7,9,1,c);
+  isoBox(x,y-23,30,13,3,1,P.cafeCream);
+  const[tx,ty]=o(-15,1);isoBox(tx,ty-26,12,9,2,1,P.cafeWood);
+  // 존마다 쿠키 / 도넛 / 과일 트레이를 섞는다.
+  for(const[du,dv]of[[-21,-3],[-11,-3],[-21,5],[-11,5]]){
+    const[a,b]=o(du,dv),yy=b-30;
+    ctx.fillStyle=d.track%3===2?P.cafePot:P.cafeWood;
+    ctx.beginPath();ctx.ellipse(a,yy,4,2.7,0,0,Math.PI*2);ctx.fill();
+    if(d.track%3===0){
+      ctx.fillStyle=P.cafeCoffee;ctx.fillRect(a-2,yy-1,1,1);ctx.fillRect(a+1,yy,1,1);
+    }else if(d.track%3===1){
+      ctx.fillStyle=P.cafeCream;ctx.beginPath();ctx.ellipse(a,yy,1.4,1,0,0,Math.PI*2);ctx.fill();
+    }else{
+      ctx.fillStyle=P.cafeGreen;ctx.beginPath();ctx.ellipse(a+1,yy-3,2,1,-0.5,0,Math.PI*2);ctx.fill();
+    }
+  }
+  // 밀봉 스낵과 물병·음료캔 — 작업 장비와 분리된 셀프 서비스 공간
+  for(const u of [3,11]){
+    const[a,b]=o(u,-5);isoBox(a,b-26,3,2,10,1,u===3?c:P.cafePot);
+    ctx.fillStyle=P.cafeCream;ctx.fillRect(a-2,b-33,4,2);
+  }
+  for(const u of [16,24]){
+    const[a,b]=o(u,5);
+    roundRect(a-3,b-39,6,13,2,P.cafeGlass);
+    ctx.strokeStyle=P.cafeGlassEdge;ctx.lineWidth=1;roundRectPath(a-3,b-39,6,13,2);ctx.stroke();
+    ctx.fillStyle=c;ctx.fillRect(a-3,b-42,6,3);ctx.fillRect(a-3,b-33,6,4);
+  }
+  const[fx,fy]=o(0,13);
+  ctx.save();ctx.translate(fx,fy-18);ctx.transform(1,0.5,0,1,0,0);
+  roundRect(-23,-5,46,10,2,c);ctx.fillStyle=P.cafeCream;ctx.font='700 7px Pretendard';
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('SNACK BREAK',0,0);ctx.restore();
+}
+
+function drawTrackArt(d){
+  const x=d.sx,y=d.sy;if(cull(x,y-65))return;
+  const c=TRACKS[d.track].accent;
+  shadowIso(x,y,18,13,1);isoBox(x,y,15,11,15,1,P.cafeCream);
+  const base=y-17;
+  ctx.save();ctx.translate(x,base);
+  if(d.track===0){ // 칩: 패키지 주변 핀과 다이
+    ctx.strokeStyle=P.cafeMetal;ctx.lineWidth=2;
+    for(let i=-9;i<=9;i+=6){ctx.beginPath();ctx.moveTo(i,-34);ctx.lineTo(i,-4);ctx.moveTo(-16,i-19);ctx.lineTo(16,i-19);ctx.stroke();}
+    roundRect(-12,-30,24,23,3,P.cafeMenu);roundRect(-7,-25,14,13,2,c);
+  }else if(d.track===1){ // 웨이퍼: 둥근 기판 위 다이 격자
+    ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(0,-21,17,20,-0.25,0,Math.PI*2);ctx.fill();
+    ctx.save();ctx.clip();ctx.strokeStyle=P.cafeCream;ctx.lineWidth=0.7;
+    for(let i=-24;i<=24;i+=7){ctx.beginPath();ctx.moveTo(i,-44);ctx.lineTo(i,0);ctx.moveTo(-22,i-21);ctx.lineTo(22,i-21);ctx.stroke();}ctx.restore();
+  }else if(d.track===2){ // 로봇 팔: 관절과 집게
+    isoBox(0,0,10,7,5,1,P.cafeMetal);
+    ctx.strokeStyle=c;ctx.lineWidth=7;ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(0,-5);ctx.lineTo(-8,-21);ctx.lineTo(6,-34);ctx.lineTo(15,-24);ctx.stroke();
+    ctx.fillStyle=P.cafeMetal;for(const[a,b]of[[0,-5],[-8,-21],[6,-34]]){ctx.beginPath();ctx.arc(a,b,4,0,Math.PI*2);ctx.fill();}
+    ctx.strokeStyle=P.cafeMenu;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(11,-22);ctx.lineTo(11,-16);ctx.moveTo(18,-24);ctx.lineTo(21,-18);ctx.stroke();
+  }else if(d.track===3){ // 사람: 서로를 향한 두 추상 인물
+    for(const[a,b,col]of[[-8,-7,c],[9,-3,P.cafeWood]]){roundRect(a-5,b-19,10,19,5,col);ctx.fillStyle=col;ctx.beginPath();ctx.arc(a,b-26,6,0,Math.PI*2);ctx.fill();}
+  }else{ // 개발: 코드 괄호 조각
+    ctx.strokeStyle=c;ctx.lineWidth=5;ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(-7,-33);ctx.lineTo(-18,-21);ctx.lineTo(-7,-9);ctx.moveTo(7,-33);ctx.lineTo(18,-21);ctx.lineTo(7,-9);ctx.stroke();
+    ctx.strokeStyle=P.cafeMetal;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(4,-36);ctx.lineTo(-4,-6);ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// 카페 소품은 기존 깊이 정렬에 참여하는 정적 도형으로 그린다.
+function drawCoffee(x,y){
+  ctx.fillStyle=P.cafeCream;ctx.beginPath();ctx.ellipse(x,y,8,3,0,0,Math.PI*2);ctx.fill();
+  roundRect(x-4,y-8,8,8,2,P.cafeCream);
+  ctx.strokeStyle=P.cafeCream;ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(x+4,y-5,2.5,-Math.PI/2,Math.PI/2);ctx.stroke();
+  ctx.fillStyle=P.cafeWood;ctx.beginPath();ctx.ellipse(x,y-8,3,1.5,0,0,Math.PI*2);ctx.fill();
+}
+
+function drawPlant(d){
+  const x=d.sx,y=d.sy;if(cull(x,y-60))return;
+  ctx.save();ctx.translate(x,y);ctx.scale(0.58,0.58);ctx.translate(-x,-y);
+  shadowIso(x,y,14,11,1);
+  isoBox(x,y,10,8,15,1,P.cafePot);
+  ctx.fillStyle=P.cafeMenu;ctx.beginPath();ctx.ellipse(x,y-16,11,5,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle=P.cafeGreen;ctx.lineWidth=2;
+  for(const[dx,dy]of[[-13,-35],[12,-42],[-9,-51],[6,-59],[17,-28]]){
+    ctx.beginPath();ctx.moveTo(x,y-16);ctx.quadraticCurveTo(x,y+dy,x+dx,y+dy);ctx.stroke();
+    ctx.fillStyle=dx<0?P.cafeGreen:P.cafeLeaf;
+    ctx.beginPath();ctx.ellipse(x+dx,y+dy,9,4,dx<0?0.6:-0.6,0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawCafeMenu(d){
+  const x=d.sx,y=d.sy;if(cull(x,y-82))return;
+  shadowIso(x,y,30,10,1);
+  ctx.strokeStyle=P.cafeWood;ctx.lineWidth=4;
+  ctx.beginPath();ctx.moveTo(x-24,y);ctx.lineTo(x-20,y-74);ctx.lineTo(x+20,y-74);ctx.lineTo(x+27,y);ctx.stroke();
+  roundRect(x-31,y-78,62,66,3,P.cafeWood);
+  roundRect(x-28,y-75,56,60,2,P.cafeMenu);
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=P.cafeCream;
+  ctx.font='800 12px Pretendard';ctx.fillText('COFFEE',x,y-61);
+  ctx.font='500 9px Pretendard';ctx.fillText('커피 한 잔의 여유',x,y-46);
+  ctx.fillText('Americano',x,y-32);ctx.fillText('Latte · Cookie',x,y-21);
+}
+
+function drawCafeArt(d){
+  const x=d.sx,y=d.sy;if(cull(x,y-90))return;
+  shadowIso(x,y,22,17,1);
+  isoBox(x,y,19,14,17,1,P.cafeCream);
+  if(d.kind==='arch'){
+    // 작은 테라코타 아치: 열린 가운데로 배경이 보이는 조각
+    ctx.strokeStyle=P.cafeWood;ctx.lineWidth=12;
+    ctx.beginPath();ctx.moveTo(x-14,y-23);ctx.lineTo(x-14,y-58);ctx.arc(x+2,y-58,16,Math.PI,0);ctx.lineTo(x+18,y-23);ctx.stroke();
+    ctx.strokeStyle=P.cafePot;ctx.lineWidth=9;
+    ctx.beginPath();ctx.moveTo(x-18,y-25);ctx.lineTo(x-18,y-60);ctx.arc(x-2,y-60,16,Math.PI,0);ctx.lineTo(x+14,y-25);ctx.stroke();
+  }else{
+    ctx.fillStyle=P.cafeWood;ctx.beginPath();ctx.ellipse(x,y-40,15,22,0.45,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=P.cafeCream;ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(x+7,y-58);ctx.bezierCurveTo(x-12,y-49,x+12,y-35,x-7,y-23);ctx.stroke();
+  }
+  ctx.fillStyle=P.cafeWood;ctx.fillRect(x-4,y-10,8,3);
+}
+
+function drawCafeLamp(d){
+  const x=d.sx,y=d.sy;if(cull(x,y-85))return;
+  ctx.fillStyle=P.charShadow;ctx.beginPath();ctx.ellipse(x,y,14,6,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=P.cafeMenu;ctx.beginPath();ctx.ellipse(x,y-2,10,4,0,0,Math.PI*2);ctx.fill();
+  ctx.fillRect(x-1.5,y-66,3,64);
+  ctx.fillStyle=P.cafeCream;ctx.beginPath();ctx.moveTo(x-9,y-79);ctx.lineTo(x+9,y-79);ctx.lineTo(x+17,y-60);ctx.lineTo(x-17,y-60);ctx.closePath();ctx.fill();
+  ctx.strokeStyle=P.cafeWood;ctx.lineWidth=1;
+  for(let dx=-9;dx<=9;dx+=6){ctx.beginPath();ctx.moveTo(x+dx*0.6,y-77);ctx.lineTo(x+dx,y-62);ctx.stroke();}
 }
 
 function drawCafebar(d){
-  const x=d.sx,y=d.sy;if(cull(x,y-84))return;
+  const x=d.sx,y=d.sy;if(cull(x,y-110))return;
   const o=isoO(x,y,1);
-  shadowIso(x,y,62,15,1);
-  // 바리스타 (바 뒤 상주 판매원)
-  const[px,py]=o(8,-13);
-  roundRect(px-7,py-30,14,18,6,'#b3541e');
-  ctx.fillStyle='#f2e2c8';ctx.fillRect(px-4,py-24,8,10); // 앞치마
-  ctx.fillStyle=P.npcHead;ctx.beginPath();ctx.arc(px,py-34,6,0,Math.PI*2);ctx.fill();
-  isoBox(x,y,58,11,26,1,P.counter);                            // 카운터(gx축 정렬)
-  const e1=o(-58,11),e2=o(58,11);
-  ctx.strokeStyle='#e0872f';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(e1[0],e1[1]-26);ctx.lineTo(e2[0],e2[1]-26);ctx.stroke(); // 상판 앞모서리 액센트
-  const[mx,my]=o(-36,0);isoBox(mx,my-26,11,7,16,1,'#333a56');  // 에스프레소 머신(상판 위)
-  const[ax,ay]=o(-36,7);ctx.fillStyle='#e0872f';ctx.fillRect(ax-4,ay-38,8,5);
-  ctx.fillStyle='#fff';const c1=o(4,0),c2=o(18,0);ctx.fillRect(c1[0]-3,c1[1]-32,6,6);ctx.fillRect(c2[0]-3,c2[1]-32,6,6); // 컵
-  ctx.font='800 10px Pretendard';const lw=txtW('CAFE · 라운지')+14;
-  roundRect(x-lw/2,y-84,lw,16,8,P.chip);
-  ctx.fillStyle='#e0872f';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('CAFE · 라운지',x,y-76);
+  shadowIso(x,y,66,18,1);
+  // 바리스타와 우드 슬랫 카운터, 밝은 석재 상판
+  const[px,py]=o(8,-17);
+  roundRect(px-7,py-37,14,22,6,P.cafeGreen);
+  ctx.fillStyle=P.cafeCream;ctx.fillRect(px-4,py-31,8,13);
+  ctx.fillStyle=P.npcHead;ctx.beginPath();ctx.arc(px,py-43,6,0,Math.PI*2);ctx.fill();
+  isoBox(x,y,62,13,30,1,P.cafeWood);
+  ctx.strokeStyle=P.cafeCream;ctx.lineWidth=1;ctx.globalAlpha=0.3;
+  for(let u=-58;u<=58;u+=8){const[a,b]=o(u,13);ctx.beginPath();ctx.moveTo(a,b-27);ctx.lineTo(a,b-3);ctx.stroke();}
+  ctx.globalAlpha=1;isoBox(x,y-30,65,16,4,1,P.cafeCream);
+  // 원두 호퍼가 달린 그라인더
+  const[gx,gy]=o(-53,-2);
+  isoBox(gx,gy-34,6,5,13,1,P.cafeMenu);
+  roundRect(gx-5,gy-63,10,14,3,P.cafeGlass);
+  ctx.fillStyle=P.cafeCoffee;ctx.fillRect(gx-4,gy-55,8,5);
+  ctx.strokeStyle=P.cafeGlassEdge;ctx.lineWidth=1;ctx.strokeRect(gx-5,gy-63,10,14);
+  ctx.fillStyle=P.cafeMenu;ctx.fillRect(gx-6,gy-65,12,3);
+  // 2그룹 에스프레소 머신: 금속 바디, 압력계, 포터필터, 스팀 완드
+  const[mx,my]=o(-24,0);isoBox(mx,my-34,20,10,23,1,P.cafeMetal);
+  const[ax,ay]=o(-24,10);
+  ctx.save();ctx.translate(ax,ay-34);ctx.transform(1,0.5,0,1,0,0);
+  ctx.fillStyle=P.cafeMenu;ctx.fillRect(-17,-19,34,14);
+  ctx.fillStyle=P.cafeCream;ctx.beginPath();ctx.arc(0,-15,3,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle=P.cafeCoffee;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,-15);ctx.lineTo(1,-17);ctx.stroke();
+  for(const u of [-10,10]){
+    ctx.fillStyle=P.cafeMetal;ctx.fillRect(u-3,-12,6,5);
+    ctx.fillStyle=P.cafeMenu;ctx.fillRect(u,-8,8,2);
+    ctx.fillStyle=P.cafeCream;ctx.fillRect(u-3,-5,6,5);
+  }
+  ctx.strokeStyle=P.cafeMetal;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(18,-14);ctx.lineTo(22,-9);ctx.lineTo(22,-3);ctx.stroke();
+  ctx.fillStyle=P.cafeMetal;ctx.fillRect(-19,1,39,3);ctx.restore();
+  drawCoffee(mx-6,my-58);drawCoffee(mx+5,my-55);
+  const[cx,cy]=o(12,1);drawCoffee(cx,cy-35);
+  // 픽업 트레이와 결제 단말기
+  const[tx,ty]=o(43,0);isoBox(tx,ty-34,9,6,2,1,P.cafeWood);
+  const[rx,ry]=o(27,-5);isoBox(rx,ry-34,5,4,9,1,P.cafeMenu);
+  // 눈높이 위 작은 브랜드 사인
+  roundRect(x-67,y-109,134,25,5,P.cafeMenu);
+  ctx.fillStyle=P.cafeCream;ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.font='800 13px Pretendard';ctx.fillText('HELLO COFFEE',x,y-96);
+  ctx.font='600 8px Pretendard';ctx.fillStyle=P.inkSoft;ctx.fillText('커피 한 잔, 아이디어 한 스푼',x,y-76);
+}
+
+// 투명 용기도 상판과 같은 아이소메트릭 축으로 구성한다.
+function drawBrewGlass(x,y,hw,hd,h,level,liquid){
+  isoBox(x,y,hw-1,hd-1,level,1,liquid);
+  const pts=[[x-hw+hd,y-(hw+hd)/2],[x+hw+hd,y+(hw-hd)/2],
+    [x+hw-hd,y+(hw+hd)/2],[x-hw-hd,y-(hw-hd)/2]];
+  ctx.fillStyle=P.cafeGlass;ctx.strokeStyle=P.cafeGlassEdge;ctx.lineWidth=0.8;
+  for(const [a,b]of[[3,2],[1,2]]){
+    ctx.beginPath();ctx.moveTo(pts[a][0],pts[a][1]);ctx.lineTo(pts[b][0],pts[b][1]);
+    ctx.lineTo(pts[b][0],pts[b][1]-h);ctx.lineTo(pts[a][0],pts[a][1]-h);ctx.closePath();ctx.fill();ctx.stroke();
+  }
+  ctx.beginPath();pts.forEach(([a,b],i)=>i?ctx.lineTo(a,b-h):ctx.moveTo(a,b-h));ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.strokeStyle=P.cafeCream;ctx.lineWidth=1;ctx.beginPath();
+  ctx.moveTo(pts[3][0]+2,pts[3][1]-h+3);ctx.lineTo(pts[3][0]+2,pts[3][1]-3);ctx.stroke();
+}
+
+function drawColdBrew(d){
+  const x=d.sx,y=d.sy;if(cull(x,y-150))return;
+  shadowIso(x,y,44,20,1);
+  isoBox(x,y,40,16,28,1,P.cafeWood);
+  isoBox(x,y-28,43,18,3,1,P.cafeCream);
+  const o=isoO(x,y,1);
+  // 추출탑마다 기둥 4개·선반·투명 용기를 깊이 순서로 구성.
+  for(const u of [-21,21]){
+    const[a,b]=o(u,0),base=b-32,r=isoO(a,base,1);
+    // 뒤쪽 기둥과 선반
+    for(const du of [-13,13]){const[px,py]=r(du,-9);isoBox(px,py,1.7,1.7,94,1,P.cafeWood);}
+    for(const h of [0,34,62,94])isoBox(a,base-h,15,11,2.5,1,P.cafeWood);
+    // 추출된 커피 서버, 원두층, 상부 물탱크
+    drawBrewGlass(a,base-3,7,5,20,9,P.cafeCoffee);
+    isoBox(a,base-23,4,3,2,1,P.cafeMetal); // 서버 입구
+    drawBrewGlass(a,base-37,7,5,15,10,P.cafeCoffee);
+    isoBox(a,base-37,7,5,2,1,P.cafeCream); // 필터
+    drawBrewGlass(a,base-65,8,6,24,16,P.cafeGlassEdge);
+    isoBox(a,base-89,9,7,2,1,P.cafeMetal); // 분리형 뚜껑
+    // 미세 조절 밸브와 물방울
+    const[vx,vy]=r(0,6);
+    isoBox(vx,vy-60,1.5,1.5,6,1,P.cafeMetal);
+    isoBox(vx+3,vy-62,4,1,2,1,P.cafeMetal);
+    ctx.fillStyle=P.cafeGlassEdge;ctx.beginPath();ctx.ellipse(vx,vy-56,1,1.8,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=P.cafeCoffee;ctx.beginPath();ctx.ellipse(a,base-29,1,1.6,0,0,Math.PI*2);ctx.fill();
+    // 앞쪽 기둥을 용기 위에 그려 두께와 금속 접합부 표현
+    for(const du of [-13,13]){
+      const[px,py]=r(du,9);isoBox(px,py,1.7,1.7,94,1,P.cafeWood);
+      for(const h of [3,36,64,93]){ctx.fillStyle=P.cafeMetal;ctx.fillRect(px-1,py-h,2,2);}
+    }
+  }
+  const[fx,fy]=o(0,16);
+  ctx.save();ctx.translate(fx,fy-14);ctx.transform(1,0.5,0,1,0,0);
+  roundRect(-32,-7,64,14,2,P.cafeMenu);
+  ctx.font='700 8px Pretendard';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=P.cafeCream;ctx.fillText('DUTCH COFFEE',0,0);ctx.restore();
 }
 
 function drawVending(d){
@@ -349,6 +715,11 @@ function drawSitter(d){ // 의자에 앉아 쉬는 방문객
   roundRect(x-7,by-17,14,16,6,d.color||'#4d8bff');
   ctx.fillStyle='rgba(255,255,255,0.14)';roundRectPath(x-7,by-17,14,8,6);ctx.fill();
   ctx.fillStyle=P.npcHead;ctx.beginPath();ctx.arc(x,by-21,6,0,Math.PI*2);ctx.fill();
+  if(d.working){ // 테이블을 향해 내민 팔: 공동 작업 중인 착석 방문객
+    ctx.strokeStyle=d.color;ctx.lineWidth=4;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(x+d.working*4,by-11);ctx.lineTo(x+d.working*13,by-7);ctx.stroke();
+    ctx.fillStyle=P.npcHead;ctx.beginPath();ctx.arc(x+d.working*13,by-7,2,0,Math.PI*2);ctx.fill();ctx.lineCap='butt';
+  }
   if(d.nick){ // 닉네임 — 배회 NPC와 동일 스타일
     ctx.font='600 9px Pretendard';const nw=txtW(d.nick)+10;
     ctx.globalAlpha=0.88;roundRect(x-nw/2,by-43,nw,14,7,P.chip);
@@ -576,8 +947,8 @@ function drawMinimap(){
 /* 정적 엔티티(벽·배너·장식·부스)는 depth 불변 — 1회 정렬 후 매 프레임 캐릭터만 병합 */
 const DRAW={billboard:drawBillboard,bench:drawBench,arcade:drawArcade,sofa:drawSofa,
   table:drawTable,board:drawBoard,chair:drawChair,
-  cafebar:drawCafebar,vending:drawVending,desk:drawDesk,foodcase:drawFoodcase,fridge:drawFridge,
-  sitter:drawSitter,longtable:drawLongtable};
+  cafebar:drawCafebar,coldbrew:drawColdBrew,vending:drawVending,desk:drawDesk,foodcase:drawFoodcase,fridge:drawFridge,
+  taskboard:drawTaskBoard,bag:drawBag,merchtable:drawMerchTable,loungecabinet:drawLoungeCabinet,snacktable:drawSnackTable,sidetable:drawSideTable,trackart:drawTrackArt,plant:drawPlant,cafemenu:drawCafeMenu,cafeart:drawCafeArt,cafelamp:drawCafeLamp,sitter:drawSitter,longtable:drawLongtable};
 const STATICS=[];
 for(const w of WALLS)STATICS.push({fn:drawWall,d:w.d,obj:w});
 for(const tr of TRACKS)STATICS.push({fn:drawBanner,d:tr.sign.x+tr.sign.y,obj:tr});
@@ -623,6 +994,7 @@ function render(t,dt){
     e.fn(e.obj,t);
   }
   while(ci<VISIBLE_CHARS.length)drawChar(VISIBLE_CHARS[ci++],t);
+  drawLoungeChat();
   ctx.restore();
   drawParticles(dt);
   if(!(mmTick++%3))drawMinimap(); // 미니맵 20Hz면 충분

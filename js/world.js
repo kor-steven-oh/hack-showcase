@@ -36,23 +36,50 @@ TRACKS.forEach((tr,ti)=>{
 
 /* ---------- 장식 (실내 캠퍼스: 라운지 · 라이브러리 · 아이디어 월 · 스테이지) ---------- */
 /* act: 상호작용 종류 — ranking/game/idea/info (main.js actSpot 라우팅) */
+const CAFE_GUEST_COLORS=['#4d8bff','#c78bff','#e0533f','#f5c542','#12b3a6','#ffa8a8','#1a8fe3','#6c5ce7','#8ce99a','#e0872f'];
 const DECOR=[
   {type:'billboard',gx:PLAZA.x,gy:PLAZA.y-3.5,text:'HELLO AI',sub:'S.LSI  HACKATHON  EXPO',color:'#3d7bff',w:250,fs:40,face:'ur'}, // 고정 문구 (애니메이션 없음)
   {type:'board',gx:PLAZA.x,gy:PLAZA.y+0.8,act:'ranking'}, // 전광판 앞 팀 랭킹·투표
-  // 트랙 존 중앙 라운지 — 트랙 색 소파 4개가 긴 테이블을 두고 두 대각선에서 정면으로 마주봄
-  // + 소파 위 착석 방문객 2~3명 (좌석을 시청자 쪽으로 반 타일 내밀어 d가 소파보다 커짐 — 소파에 안 가려짐)
+  // 트랙 존 중앙 라운지 — 소파 3개와 위쪽 작업 보드가 공동 작업 테이블을 둘러쌈
+  // 서쪽 소파 착석 방문객은 소파 바로 뒤 깊이로 그려 등받이에 가려지지 않게 함
   ...ZONES.flatMap((z,i)=>{
     const c=TRACKS[i].accent,lx=z.cx-2; // 라운지 전체 2칸 왼쪽(-gx) — 부스 전시월과 안 겹침
     const NK=['부스투어중','데모구경','질문있어요','메모중','열공모드','스티커수집','포토타임','네트워킹','굿즈헌터','피드백요정','커피한잔','당충전','휴식중'];
     const CL=['#12b3a6','#e0872f','#c78bff','#21a17a','#e0533f','#1a8fe3','#f5c542','#6c5ce7','#4d8bff','#ffa8a8','#74c0fc','#8ce99a','#ffd166'];
-    // zd: 좌/위쪽 좌석은 gx+gy가 소파보다 작아 가려짐 — 소파 depth 직후로 강제
-    const SEAT=[[lx-0.55,z.cy+1.55,lx+z.cy+1.5],[lx+0.55,z.cy+1.55,lx+z.cy+2.2],   // 북쪽 소파 2자리
-                [lx-3.05,z.cy+3.45,lx+z.cy+0.9],[lx-3.05,z.cy+4.55,lx+z.cy+1.6]];  // 서쪽 소파 2자리
-    const PICK=[[0,1,3],[1,2],[0,2,3],[0,3],[1,2,3]][i];     // 존마다 2~3명 랜덤 조합
+    // 중앙 테이블의 측면·아래쪽에 소파를 정렬하고 위쪽 자리는 작업 보드로 사용.
+    const SOFAS=[[0,0.6],[0,8],[-3.7,4],[3.3,4]].map(([x,y])=>[lx+x,z.cy+y]);
+    const[wx,wy]=SOFAS[2];
+    // 소파가 옮겨지면 착석 위치와 깊이도 함께 이동.
+    const SEAT=[[wx+0.15,wy-0.55,wx+wy+0.1],[wx+0.15,wy+0.55,wx+wy+0.8]];
+    // 장비대와 간식대를 작업 테이블에 가까운 소파 사이 모서리에 배치.
+    const EXTRAS=[
+      [[-2.4,1.9],[2.5,6.8],[3,-0.6],[-2.5,6.7]],
+      [[-2.2,2],[2.7,6.9],[3.2,-0.6],[-2.4,6.8]],
+      [[-2.3,1.9],[2.4,6.7],[3.1,-0.7],[-2.6,6.9]],
+      [[-2.3,2.1],[2.6,6.8],[3.3,-0.5],[-2.4,6.9]],
+      [[-2.4,2],[2.5,6.9],[3,-0.7],[-2.5,6.8]],
+    ][i];
+    const WORK_NICKS=[
+      ['칩설계중','RTL장인','타이밍봇','배선연구','검증요정','EDA메이트'],
+      ['수율탐정','웨이퍼러버','품질지킴','패턴분석','불량제로','데이터뷰'],
+      ['설비닥터','센서연구','로그탐험','알람해결','정비메이트','운영마스터'],
+      ['온보딩중','피플메이트','성장코치','조직탐구','러닝버디','마음챙김'],
+      ['코드리뷰','테스트장인','디버깅중','커밋요정','빌드메이트','문서덕후'],
+    ][i];
+    const PICK=[[1],[0],[0,1],[1],[0,1]][i]; // 남은 소파에 1~2명 착석
     return[
-    {type:'sofa',gx:lx,gy:z.cy+1.4,sk:0.5,color:c},{type:'sofa',gx:lx,gy:z.cy+6.6,sk:0.5,fl:1,color:c},   // gy축 대각선 쌍
-    {type:'sofa',gx:lx-3.2,gy:z.cy+4,sk:-0.5,color:c},{type:'sofa',gx:lx+3.2,gy:z.cy+4,sk:-0.5,fl:1,color:c}, // gx축 대각선 쌍
-    {type:'longtable',gx:lx,gy:z.cy+4,sk:0.5},
+    ...SOFAS.flatMap(([gx,gy],k)=>k===0?[]:[{type:'sofa',gx,gy,sk:k<2?0.5:-0.5,
+      fl:k%2,color:c,cushion:true}]),
+    {type:'longtable',gx:lx,gy:z.cy+4,sk:0.5,lounge:i},
+    // 넓은 공동 작업 테이블 양쪽에 3명씩 앉아 노트북을 함께 본다.
+    ...[[-1.25,-1.35],[0,-1.35],[1.25,-1.35],[-1.25,1.35],[0,1.35],[1.25,1.35]].flatMap(([dx,dy],k)=>[
+      {type:'chair',gx:lx+dx,gy:z.cy+4+dy,sk:-0.5,fl:dy>0?1:0},
+      {type:'sitter',gx:lx+dx,gy:z.cy+4+dy,color:CL[(i*3+k+4)%13],working:dy>0?1:-1,nick:WORK_NICKS[k],track:i},
+    ]),
+    ...['sidetable','snacktable','trackart','loungecabinet'].map((type,k)=>
+      ({type,gx:lx+EXTRAS[k][0],gy:z.cy+EXTRAS[k][1],track:i})),
+    {type:'taskboard',gx:SOFAS[0][0],gy:SOFAS[0][1],sk:0.5,track:i},
+    {type:'bag',gx:SOFAS[1][0]+1.2,gy:SOFAS[1][1]+0.15,track:i},
     ...PICK.map((sn,k)=>({type:'sitter',gx:SEAT[sn][0],gy:SEAT[sn][1],zd:SEAT[sn][2],color:CL[(i*3+k)%13],nick:NK[(i*3+k)%13]})),
   ];}),
   // 플레이그라운드 대형 팻말 — zd: 뒤벽(d≈86.4)보다 뒤에 그려지지 않도록 벽 위로
@@ -64,44 +91,54 @@ const DECOR=[
   {type:'billboard',gx:2.2,gy:18.3,text:'MESSAGE WALL',sub:'💬 MESSAGE WALL LIVE · 방문객이 남긴 한마디',color:'#21a17a',w:340,h:150,fs:32,face:'ul',notes:1,zd:24.3},
   {type:'board',gx:12.5,gy:18.3,act:'idea'},{type:'board',gx:47.5,gy:18.3,act:'idea'},
   {type:'table',gx:27,gy:21},{type:'table',gx:33,gy:21},
-  // 카페 라운지 (우측 아래 대형 — 플레이그라운드 축소분 흡수)
-  {type:'cafebar',gx:69,gy:26.5},
-  // 서비스 라인(위쪽 가장자리): 음식 진열대 2 · 음료 쿨러 1 · 자판기 3 한쪽 밀집 나열
-  {type:'foodcase',gx:63.5,gy:22.4},{type:'foodcase',gx:66.7,gy:22.4},
-  {type:'fridge',gx:68.4,gy:22.3},{type:'fridge',gx:70,gy:22.3},{type:'fridge',gx:71.8,gy:22.3},
-  {type:'vending',gx:73.6,gy:22.2},{type:'vending',gx:75.8,gy:22.2,color:'#21a17a'},{type:'vending',gx:78,gy:22.2,color:'#1a8fe3'},
-  // 디저트 진열대 — 좌석 클러스터(착석 방문객) 주변 3곳
-  {type:'foodcase',gx:62.4,gy:31.3,sk:-0.5},{type:'foodcase',gx:70.9,gy:29.2},{type:'foodcase',gx:72.6,gy:36.4,sk:-0.5},
-  // 좌석: 긴 테이블 2 + 원탁 5 믹스 (의자 fl = 반대편 마주 앉기)
-  // 긴 테이블 A (gx축) — 4인석, 3명 그룹 착석
-  {type:'longtable',gx:65.5,gy:30,sk:0.5},
-  {type:'chair',gx:64.6,gy:28.8,sk:-0.5},{type:'chair',gx:66.4,gy:28.8,sk:-0.5},
-  {type:'chair',gx:64.6,gy:31.2,sk:-0.5,fl:1},{type:'chair',gx:66.4,gy:31.2,sk:-0.5,fl:1},
-  // 긴 테이블 B (gy축) — 4인석, 2명 마주 착석
-  {type:'longtable',gx:74,gy:32.5,sk:-0.5},
-  {type:'chair',gx:72.9,gy:31.6,sk:0.5},{type:'chair',gx:72.9,gy:33.4,sk:0.5},
-  {type:'chair',gx:75.1,gy:31.6,sk:0.5,fl:1},{type:'chair',gx:75.1,gy:33.4,sk:0.5,fl:1},
-  // 원탁 5개 (의자 2개씩: 서쪽 sk0.5 · 북쪽 sk-0.5)
-  {type:'table',gx:69,gy:31},{type:'chair',gx:67.7,gy:31,sk:0.5},{type:'chair',gx:69,gy:29.7,sk:-0.5},
-  {type:'table',gx:64,gy:34.5},{type:'chair',gx:62.7,gy:34.5,sk:0.5},{type:'chair',gx:64,gy:33.2,sk:-0.5},
-  {type:'table',gx:69,gy:36.5},{type:'chair',gx:67.7,gy:36.5,sk:0.5},{type:'chair',gx:69,gy:35.2,sk:-0.5},
-  {type:'table',gx:75.5,gy:37},{type:'chair',gx:74.2,gy:37,sk:0.5},{type:'chair',gx:75.5,gy:35.7,sk:-0.5},
-  {type:'table',gx:64.5,gy:39},{type:'chair',gx:63.2,gy:39,sk:0.5},{type:'chair',gx:64.5,gy:37.7,sk:-0.5},
-  {type:'sofa',gx:66.5,gy:41.2,color:'#a45a44',sk:-0.5},{type:'table',gx:69.3,gy:41.3},{type:'sofa',gx:72,gy:41.2,color:'#a45a44',sk:-0.5,fl:1}, // 테이블 사이 마주보기
-  // 동쪽 소파 라운지 (카페바 오른쪽 빈 공간) — gy축 마주보기 쌍 + 테이블, 서비스 라인 옆 대기 소파 1
-  {type:'sofa',gx:77.5,gy:25.2,sk:0.5,color:'#a45a44'},{type:'table',gx:77.5,gy:27.2},{type:'sofa',gx:77.5,gy:29.2,sk:0.5,fl:1,color:'#a45a44'},
-  {type:'sofa',gx:63.6,gy:24.9,sk:-0.5,color:'#a45a44'},
-  // 앉아 있는 방문객 (의자 좌표와 일치, 의자 뒤 선언 — 3명 그룹 · 2명 마주 · 2명 · 싱글)
-  {type:'sitter',gx:64.6,gy:28.8,color:'#12b3a6',nick:'라떼장인'},
-  {type:'sitter',gx:66.4,gy:28.8,color:'#e0872f',nick:'모카홀릭'},
-  {type:'sitter',gx:66.4,gy:31.2,color:'#c78bff',nick:'슈크림'},
-  {type:'sitter',gx:72.9,gy:31.6,color:'#21a17a',nick:'콜드브루'},
-  {type:'sitter',gx:75.1,gy:33.4,color:'#e0533f',nick:'디카페인'},
-  {type:'sitter',gx:62.7,gy:34.5,color:'#1a8fe3',nick:'바닐라샷'},
-  {type:'sitter',gx:64,gy:33.2,color:'#f5c542',nick:'휘핑추가'},
-  {type:'sitter',gx:67.7,gy:31,color:'#6c5ce7',nick:'에스프레소'},
+  // 카페: 서비스 라인 → 열린 주문 동선 → 2인석 / 커뮤니티 테이블 / 소파 코너
+  {type:'cafebar',gx:69,gy:25.5},
+  {type:'coldbrew',gx:73.5,gy:25.5}, // 카운터 옆 독립 추출대 — 주문 동선 뒤쪽
+  {type:'cafemenu',gx:62.4,gy:27.5}, // 서쪽 진입부, 간판 뒤로 가구가 겹치지 않는 자리
+  {type:'foodcase',gx:65.4,gy:24.4},{type:'foodcase',gx:66.6,gy:24.4},
+  {type:'fridge',gx:70.8,gy:22.3},{type:'fridge',gx:72.2,gy:22.3},
+  {type:'vending',gx:74,gy:22.3,color:P.cafeGreen},
+  ...[[63,24],[62.2,33],[62.2,37],[63,41.5],[79,32.8],[74,41.5]]
+    .map(([gx,gy])=>({type:'plant',gx,gy})),
+  // 서쪽 2열 × 4행: 테이블 사이 간격을 두고 2인석 8세트 배치
+  // gx 69~72 중앙 통로와 카운터 앞 gy 27~29는 좌석 없이 유지.
+  ...[64,67].flatMap((gx,col)=>[30.5,33.5,36.5,39.5].flatMap((gy,row)=>[
+    {type:'table',gx,gy},
+    {type:'chair',gx:gx-0.85,gy,sk:0.5},
+    {type:'chair',gx:gx+0.85,gy,sk:0.5,fl:1},
+    {type:'sitter',gx:gx-0.85,gy,color:CAFE_GUEST_COLORS[col*4+row],
+      nick:['라떼장인','디카페인','쿠키타임','원두탐험','커피수혈','디저트러버','잠깐휴식','아이디어충전'][col*4+row]},
+    ...((col+row)%2===0?[{type:'sitter',gx:gx+0.85,gy,color:CAFE_GUEST_COLORS[(col*4+row+4)%CAFE_GUEST_COLORS.length],
+      nick:['바닐라샷','모닝커피','산미취향','밀크티'][col*2+(row>>1)]}]:[]),
+  ])),
+  // 동쪽 4인석 3세트: 카운터 앞을 피하고 소파 코너 옆까지 활용
+  ...[30.5,33.5,36.5].flatMap((gy,i)=>[
+    {type:'longtable',gx:73.8,gy,sk:0.5},
+    ...[[-0.7,-0.8],[0.7,-0.8],[-0.7,0.8],[0.7,0.8]].map(([dx,dy])=>
+      ({type:'chair',gx:73.8+dx,gy:gy+dy,sk:-0.5,fl:dy>0?1:0})),
+    {type:'sitter',gx:73.1,gy:gy-0.8,color:CAFE_GUEST_COLORS[i*3],nick:['콜드브루','모카홀릭','데모이야기'][i]},
+    {type:'sitter',gx:74.5,gy:gy+0.8,color:CAFE_GUEST_COLORS[i*3+1],nick:['팀회고','오트라떼','다음프로젝트'][i]},
+    ...(i!==1?[{type:'sitter',gx:74.5,gy:gy-0.8,color:CAFE_GUEST_COLORS[i*3+2],nick:i?'당충전':'커피챗'}]:[]),
+  ]),
+  // 동쪽 가장자리 2인석 3세트, 아치와 소파 사이 공간 활용
+  ...[28.5,31.5,34.5].flatMap((gy,i)=>[
+    {type:'table',gx:77.7,gy},
+    {type:'chair',gx:77.7,gy:gy-0.85,sk:-0.5},
+    {type:'chair',gx:77.7,gy:gy+0.85,sk:-0.5,fl:1},
+    {type:'sitter',gx:77.7,gy:gy-0.85,color:CAFE_GUEST_COLORS[i+7],nick:['책과커피','한잔더','에스프레소'][i]},
+  ]),
+  // 세이지 러그 위 소파 코너: 두 소파 사이 낮은 커피 테이블
+  {type:'sofa',gx:76.5,gy:36.8,sk:0.5,color:P.cafeGreen},
+  {type:'table',gx:76.5,gy:38.3,low:true},
+  {type:'sofa',gx:76.5,gy:39.8,sk:0.5,fl:1,color:P.cafeGreen},
+  {type:'cafelamp',gx:78.6,gy:36.8},
+  // 작은 갤러리 포인트: 아치 오브제와 커피콩 조각
+  {type:'cafeart',gx:78,gy:24,kind:'arch'},
+  {type:'cafeart',gx:69.5,gy:40,kind:'bean'},
+  {type:'bench',gx:71.5,gy:40.5,sk:0.5},
   // 입구 — 안내데스크
   {type:'desk',gx:33,gy:43.3,act:'info'},
+  {type:'merchtable',gx:38,gy:42.5}, // 안내데스크 옆, 입구 정면 통로는 비움
   // 플레이그라운드: 아케이드 미니게임 캐비닛 + 벤치
   {type:'arcade',gx:65,gy:11,label:'두더지 잡기',color:'#e0533f'},
   {type:'arcade',gx:70,gy:11,label:'반응속도',color:'#21a17a',game:'reaction',act:'game'},
@@ -113,10 +150,12 @@ const DECOR=[
   // 플레이그라운드 휴식 공간 (간판 아래 라운지)
   {type:'sofa',gx:66.5,gy:6.5,sk:-0.5},{type:'sofa',gx:72.5,gy:6.5,sk:-0.5,fl:1},{type:'table',gx:69.5,gy:6.7}, // 테이블 사이 마주보기
 ];
+// 카페 테이블만 컵·트레이를 올린다. 다른 존의 공용 테이블은 그대로 유지.
+for(const d of DECOR)if(d.gx>=62&&d.gy>=24&&['table','longtable'].includes(d.type))d.cafe=true;
 /* NPC가 머무는 지점 (소파·테이블·객석 앞) — 공간에 생기 부여 */
-const HANGOUTS=[[67.5,42],[72,42],[69.5,42.2],[26,25.2],[34,25.2],[26,29.2],[34,29.2],
-  [21.3,21.2],[38.7,21.2],[69.5,40],[77.8,40.2],
-  [67,7.8],[72.5,7.8],[69.7,25.2],[65.8,30.8],[73.8,34.8],[77.8,30.8],
+const HANGOUTS=[[68,38],[72,38.5],[70,41.5],[26,25.2],[34,25.2],[26,29.2],[34,29.2],
+  [21.3,21.2],[38.7,21.2],[68,40],[78.5,40.8],
+  [67,7.8],[72.5,7.8],[69.7,28],[65.5,33],[73.8,34.8],[77.8,30.8],
   ...ZONES.map(z=>[z.cx-2,z.cy+5.3])]; // 존 중앙 라운지 (2칸 왼쪽 이동 반영)
 
 /* 정적 스크린 좌표 캐시 — 매 프레임 w2s 재계산 방지 */
@@ -135,7 +174,10 @@ for(let gx=1;gx<=HALL_W-2;gx++)for(let gy=1;gy<=HALL_D-2;gy++){
   if(gy>=HALL_D-4){ fill=mix(base,'#3d7bff',0.13); }
   else if(pd<8){ fill=mix(base,'#3d7bff',pd<5?0.2:0.10); }       // 광장 + 중앙 러그
   else if(gx>=PG.x0&&gx<=PG.x1&&gy>=PG.y0&&gy<=PG.y1){ fill=mix(base,PG.accent,0.14); }
-  else if(gx>=62&&gx<=80&&gy>=21&&gy<=42){ fill=mix(base,'#e0872f',0.10); }   // 카페 라운지 러그 (플레이그라운드 아래)
+  else if(gx>=62&&gx<=80&&gy>=21&&gy<=42){
+    const rug=gx>=74&&gx<=79&&gy>=36&&gy<=41;
+    fill=rug?P.cafeRug:gy<=27?mix(P.cafeTile,P.cafeWood,chk?0.08:0):mix(P.cafeFloor,P.cafeWood,gx%3===0?0.16:0.04);
+  }   // 카페 라운지 러그 (플레이그라운드 아래)
   else{ const tk=carpetTrack(gx,gy); fill = tk>=0 ? mix(base,TRACKS[tk].accent,0.17) : base; }
   FLOOR.push({gx,gy,fill});
 }
